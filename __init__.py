@@ -1,1 +1,1 @@
-from pcm.indicatorMatrix import indicatorMatrix
+from PcmPy.indicatorMatrix import indicatorMatrix

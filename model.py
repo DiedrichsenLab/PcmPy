@@ -1,16 +1,24 @@
 import numpy as np 
-class model:
+class PcmModel:
     
-    def __init__(self,type):
+    def __init__(self,type,name):
         self.type = type
-        self.numGparams = 0 
-        if (type=="fixed"):
-            self.numGparams = 0 
-        else:
-            self.Gc = np.zeros(5,5)
-
+        self.name = name
     
+    def calculateG(self,theta):
+        raise(NameError("caluclate G needs to be implemented"))
+    
+class FeatureModel(PcmModel):
+    def __init__(self,name,Ac): 
+        PcmModel.__init__(self,name,"feature")
+        if (Ac.ndim <3):
+            Ac = Ac.reshape((1,)+A.shape)
+        self.Ac = Ac 
+        self.numGparams = Ac.shape[0]
         
+    
+class ComponentModel(PcmModel):
+    
 
 """
 

@@ -10,11 +10,14 @@ class PcmModel:
     
 class FeatureModel(PcmModel):
     def __init__(self,name,Ac): 
-        PcmModel.__init__(self,name,"feature")
+        PcmModel.__init__(self,"feature",name)
         if (Ac.ndim <3):
             Ac = Ac.reshape((1,)+A.shape)
         self.Ac = Ac 
         self.numGparams = Ac.shape[0]
+    
+    def calculateG(self,theta): 
+        
         
     
 class ComponentModel(PcmModel):

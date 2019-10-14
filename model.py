@@ -1,37 +1,54 @@
 import numpy as np 
-class PcmModel:
-    
-    def __init__(self,type,name):
-        self.type = type
+class Model:
+    """
+    Abstract Model Class
+    """
+    def __init__(self,name):
         self.name = name
     
-    def calculateG(self,theta):
+    def calculate_G(self,theta):
         raise(NameError("caluclate G needs to be implemented"))
     
-class FeatureModel(PcmModel):
+class ModelFeature(Model):
+    """
+    Feature model 
+    A = sum (theta_i *  Ac_i)
+    G = A*A' 
+    """
     def __init__(self,name,Ac): 
-        PcmModel.__init__(self,name,"feature")
+        Model.__init__(self,name)
         if (Ac.ndim <3):
-            Ac = Ac.reshape((1,)+A.shape)
+            Ac = Ac.reshape((1,)+Ac.shape)
         self.Ac = Ac 
-        self.numGparams = Ac.shape[0]
+        self.n_param = Ac.shape[0]
+        
+    def calculate_G(self,theta):
+        Ac = self.Ac * np.reshape(theta,(theta.size,1,1))# Using Broadcasting 
+        A = Ac.sum(axis=0)
+        G = A@A.transpose()
+        dG_dTheta = np.zeros((self.n_param,)+G.shape)
+        for i in range(0,self.n_param):
+            dA = self.Ac[i,:,:] @ A.transpose();  
+            dG_dTheta[i,:,:] =  dA + dA.transpose();     
+        return (G,dG_dTheta)
         
     
-class ComponentModel(PcmModel):
+class ModelComponent(Model):
+    """
+    Component model class 
+    G = sum (exp(theta_i) * Gc_i)
     
-
-"""
-
-function [G,dGdtheta] = pcm_calculateG(M,theta)
-% function [G,dGdtheta] = pcm_calculateG(M,theta)
-% This function calculates the predicted second moment matrix (G) and the
-% derivate of the second moment matrix in respect to the parameters theta. 
-% INPUT: 
-%       M:        Model structure 
-%       theta:    Vector of parameters 
-% OUTPUT: 
-%       G:        Second moment matrix 
-%       dGdtheta: Matrix derivatives in respect to parameters 
-% Joern Diedrichsen, 2016 
-@author: jdiedrichsen
-"""
+    """    
+    def __init__(self,name,Gc): 
+        Model.__init__(self,name)
+        if (Gc.ndim <3):
+            Gc = Gc.reshape((1,)+Gc.shape)
+        self.Gc = Gc 
+        self.n_param = Gc.shape[0]
+        
+    def calculate_G(self,theta):
+        exp_theta=np.reshape(np.exp(theta),(theta.size,1,1)) # Bring into the right shape for broadcasting   
+        dG_dTheta = self.Gc * exp_theta  # This is also the derivative dexp(x)/dx = exp(x) 
+        G = dG_dTheta.sum(axis=0)
+        return (G,dG_dTheta)
+        

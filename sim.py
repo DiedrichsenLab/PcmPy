@@ -6,6 +6,10 @@ Created on Sun Oct 13 20:19:10 2019
 
 import PcmPy as pcm 
 import numpy as np 
+import scipy.stats as ss 
+
+
+import scipy.linalg as sl 
 
 class Dataset: 
     
@@ -40,6 +44,13 @@ def make_dataset(model,theta,cond_vec,part_vec,n_channel=30,n_sim = 1,signal = 1
     
     n_obs,n_cond = Zcond.shape
     
+    # Generate the true patterns with exactly correct second moment matrix 
+    U = np.random.uniform(0,1,size=(n_cond,n_channel))
+    U = ss.norm.ppf(U)  # We use two-step procedure allow for different distributions later on 
+    E = U @ U.transpose()
+    M=np.linalg.cholesky(E)
     
-    Y = np.random.uniform(0,1,size=(n_cond,n_channel))
+    
+    # Make the second-moment Y*Y' exactly equal to G
+    
     return Y

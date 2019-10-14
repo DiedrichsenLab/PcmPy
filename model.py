@@ -31,6 +31,9 @@ class ModelFeature(Model):
             dA = self.Ac[i,:,:] @ A.transpose();  
             dG_dTheta[i,:,:] =  dA + dA.transpose();     
         return (G,dG_dTheta)
+    
+    def calculateG(self,theta): 
+        
         
     
 class ModelComponent(Model):

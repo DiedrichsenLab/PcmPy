@@ -3,10 +3,16 @@ import numpy as np
 Collection of different kinds of indicator Matrices 
     identity: One column per unique element in vector  
     identity_pos: One column per unique non-zero element 
-    allpairs: 
+    allpairs:     All K*(K-1)/2 pairwise contrasts 
 '''
 
 def identity(c):
+    """ Indicator matrix with one column per unique element in vector  
+        Args:
+            c (numpy.ndarray): n_row vector to code - discrete values (one dimensional)
+        Returns:
+            X (numpy.ndarray): n_row x n_values indicator matrix 
+    """
     cc = np.unique(c)
     K = cc.size
     rows = np.size(c)
@@ -17,6 +23,12 @@ def identity(c):
     return X
 
 def identity_pos(c):
+    """ Indicator matrix with one column per unique positive element in vector  
+        Args:
+            c (numpy.ndarray): n_row vector to code - discrete values (one dimensional)
+        Returns:
+            X (numpy.ndarray): n_row x n_values indicator matrix 
+    """
     cc = np.unique(c)
     K = cc.size
     rows = np.size(c)
@@ -29,6 +41,12 @@ def identity_pos(c):
 
 
 def allpairs(c): 
+    """ Indicator matrix with one row per unqiue pair 
+        Args:
+            c (numpy.ndarray): n_row vector to code - discrete values (one dimensional)
+        Returns:
+            X (numpy.ndarray): n_values*(n_values-1)/2 x n_row contrast matrix 
+    """
     cc = np.unique(c)
     K = cc.size
     rows = np.size(c)

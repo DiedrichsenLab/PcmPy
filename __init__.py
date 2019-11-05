@@ -3,5 +3,7 @@ from PcmPy.model import ModelComponent
 from PcmPy.model import ModelFeature
 from PcmPy.model import ModelFixed
 from PcmPy.sim import Dataset 
+from PcmPy.sim import make_design 
+from PcmPy.sim import make_dataset 
 import PcmPy.sim as sim
 import PcmPy.indicator as indicator

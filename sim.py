@@ -55,7 +55,7 @@ def make_design(n_cond,n_part):
     cond_vec = np.kron(np.ones((n_part,)),c) # Condition Vector 
     part_vec = np.kron(p,np.ones((n_cond,))) # Partition vector 
     return(cond_vec,part_vec)
-      
+
 def make_dataset(model,theta,cond_vec,n_channel=30,n_sim = 1,\
                  signal = 1,noise = 1,noise_cov = None,\
                  part_vec=None): 
@@ -115,11 +115,11 @@ def make_dataset(model,theta,cond_vec,n_channel=30,n_sim = 1,\
     # across different partitions 
     data = np.empty((n_sim,n_obs,n_channel))
     for i in range(0,n_sim):
-        noise = np.random.uniform(0,1,size=(n_obs,n_channel))
-        noise = ss.norm.ppf(noise)*np.sqrt(noise)  # Allows alter for providing own cdf for noise distribution 
+        epsilon = np.random.uniform(0,1,size=(n_obs,n_channel))
+        epsilon = ss.norm.ppf(epsilon)*np.sqrt(noise)  # Allows alter for providing own cdf for noise distribution 
         if (noise_cov is not None):         
-            noise   = noise @ noise_chol
-        data[i,:,:] = Zcond@true_U + noise
+            epsilon   = epsilon @ noise_chol
+        data[i,:,:] = Zcond@true_U * np.sqrt(signal) + epsilon
     obs_des = {"cond_vec": cond_vec}
     des     = {"signal": signal,"noise":noise,"model":model.name,"theta": theta}
     dataset = pcm.Dataset(data,obs_descriptors = obs_des,descriptors = des)

@@ -65,8 +65,7 @@ def make_dataset(model,theta,cond_vec,n_channel=30,n_sim = 1,\
     Args:
         model (pcm.Model):        the model from which to generate data 
         theta (numpy.ndarray):    vector of parameters (one dimensional)
-        cond_vec (numpy.ndarray): RSA-style model: vector of experimental conditions 
-                                  Encoding-style model: design matrix (n_obs x n_cond)
+        cond_vec (numpy.ndarray): RSA-style model: vector of conditions; Encoding-style model: design matrix (n_obs x n_cond)
         n_channel (int):          Number of channels (default = 30)
         n_sim (int):              Number of data set simulation with the same signal (default = 1)
         signal (float):           Signal variance (multiplied by predicted G)

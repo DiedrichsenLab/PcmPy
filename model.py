@@ -18,12 +18,14 @@ class ModelFeature(Model):
     def __init__(self,name,Ac): 
         """
         Creator for ModelFeature class        
+
         Args: 
             name (string):     name of the particular model for indentification 
             Ac (numpy.ndarray): 3-dimensional array with components of A  
         Returns: 
             Model object 
         """
+
         Model.__init__(self,name)
         if (Ac.ndim <3):
             Ac = Ac.reshape((1,)+Ac.shape)
@@ -33,6 +35,7 @@ class ModelFeature(Model):
     def calculate_G(self,theta):
         """
         Calculation of G
+
         Args: 
             theta (numpy.ndarray):    Vector of model parameters 
         Returns: 
@@ -40,6 +43,7 @@ class ModelFeature(Model):
             G (np.ndarray):           2-dimensional (K,K) array of predicted second moment 
             dG_dTheta (np.ndarray):   3-d (n_param,K,K) array of partial matrix derivatives of G in respect to theta 
         """
+
         Ac = self.Ac * np.reshape(theta,(theta.size,1,1))# Using Broadcasting 
         A = Ac.sum(axis=0)
         G = A@A.transpose()
@@ -58,9 +62,12 @@ class ModelComponent(Model):
     def __init__(self,name,Gc): 
         """
         Creator for ModelComponent class        
-        Args: 
-            name (string):     name of the particular model for indentification 
-            Gc (numpy.ndarray): 3-dimensional array with compoments of G 
+
+        Parameters:
+            name (string)
+                name of the particular model for indentification 
+            Gc (numpy.ndarray)
+                3-dimensional array with compoments of G 
         Returns: 
             Model object 
         """
@@ -74,13 +81,16 @@ class ModelComponent(Model):
     def calculate_G(self,theta):
         """
         Calculation of G
-        Args: 
+
+        Args:
             theta (numpy.ndarray):    Vector of model parameters 
-        Returns: 
-            (G,dG_dTheta) tupel 
-            G (np.ndarray):           2-dimensional (K,K) array of predicted second moment 
-            dG_dTheta (np.ndarray):   3-d (n_param,K,K) array of partial matrix derivatives of G in respect to theta 
+        Returns:
+            G (np.ndarray)
+                2-dimensional (K,K) array of predicted second moment 
+            dG_dTheta (np.ndarray)
+                3-d (n_param,K,K) array of partial matrix derivatives of G in respect to theta 
         """
+
         exp_theta=np.reshape(np.exp(theta),(theta.size,1,1)) # Bring into the right shape for broadcasting   
         dG_dTheta = self.Gc * exp_theta  # This is also the derivative dexp(x)/dx = exp(x) 
         G = dG_dTheta.sum(axis=0)
@@ -90,14 +100,17 @@ class ModelFixed(Model):
     """
     Fixed PCM with a rigid predicted G matrix and no parameters: 
     Use for Null-models
-    """    
+    """
     def __init__(self,name,G):
         """
-        Creator for ModelFixed class        
-        Args: 
-            name (string):     name of the particular model for indentification 
-            G (numpy.ndarray): 2-dimensional array giving the predicted second moment 
-        Returns: 
+        Creator for ModelFixed class
+
+        Parameters:
+            name (string)
+                name of the particular model for indentification 
+            G (numpy.ndarray)
+                2-dimensional array giving the predicted second moment 
+        Returns:
             Model object 
         """
 
@@ -110,10 +123,11 @@ class ModelFixed(Model):
     def calculate_G(self,theta=None):
         """
         Calculation of G
+
         Returns: 
             (G,dG_dTheta) tupel 
             G (np.ndarray):           2-dimensional (K,K) array of predicted second moment 
             dG_dTheta:                None
         """
+
         return (self.G,None)
-        

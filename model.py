@@ -1,12 +1,12 @@
 import numpy as np 
 class Model:
     """
-    Abstract Model Class
+    Abstract PCM Model Class
     """
     def __init__(self,name):
         self.name = name
     
-    def calculate_G(self,theta):
+    def predict(self,theta):
         raise(NameError("caluclate G needs to be implemented"))
     
 class ModelFeature(Model):
@@ -32,7 +32,7 @@ class ModelFeature(Model):
         self.Ac = Ac 
         self.n_param = Ac.shape[0]
         
-    def calculate_G(self,theta):
+    def predict(self,theta):
         """
         Calculation of G
 
@@ -77,8 +77,8 @@ class ModelComponent(Model):
             Gc = Gc.reshape((1,)+Gc.shape)
         self.Gc = Gc 
         self.n_param = Gc.shape[0]
-        
-    def calculate_G(self,theta):
+
+    def predict(self,theta):
         """
         Calculation of G
 
@@ -120,7 +120,7 @@ class ModelFixed(Model):
         self.G = G 
         self.n_param = 0
         
-    def calculate_G(self,theta=None):
+    def predict(self,theta=None):
         """
         Calculation of G
 

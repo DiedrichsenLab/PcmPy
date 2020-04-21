@@ -37,20 +37,21 @@ def likelihood_individ(theta, Model, YY, Z, X=None, Noise=None, num_channels=1, 
     Q = Z.shape[1]
 
     # Get G-matrix and derivative of G-matrix in respect to parameters
-    model_params = theta[range(Model.num_params)]
+    model_params = theta[range(Model.n_param)]
     G,dGdtheta = Model.predict(model_params)
 
     # Get the scale parameter
     if fit_scale:
         scale_param = theta[model_params+1]
     else:
-    scaleParam = 0;
-end
+        scale_param = 1
+    Gs = G*np.exp(scale_param);         % Scale the subject G matrix up by 
 
     # Get the noise model parameters and noise prediction
-    noise_params = theta(M.numGparams+1);
+    noise_params = theta[M.n_param+fit_scale,:]
 
-Gs = G*exp(scaleParam);         % Scale the subject G matrix up by individual scale parameter
+    # 
+individual scale parameter
 
 if (~isempty(OPT.runEffect))
     numRuns = size(OPT.runEffect,2);

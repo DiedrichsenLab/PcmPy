@@ -5,6 +5,7 @@ class Model:
     """
     def __init__(self,name):
         self.name = name
+        self.n_param = 0
 
     def predict(self,theta):
         raise(NameError("caluclate G needs to be implemented"))

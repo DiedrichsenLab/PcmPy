@@ -1,4 +1,6 @@
 import numpy as np
+from numpy import exp, eye, log
+
 class Model:
     """
     Abstract PCM Model Class
@@ -52,8 +54,8 @@ class ModelFeature(Model):
         G = A@A.transpose()
         dG_dTheta = np.zeros((self.n_param,)+G.shape)
         for i in range(0,self.n_param):
-            dA = self.Ac[i,:,:] @ A.transpose();
-            dG_dTheta[i,:,:] =  dA + dA.transpose();
+            dA = self.Ac[i,:,:] @ A.transpose()
+            dG_dTheta[i,:,:] =  dA + dA.transpose()
         return (G,dG_dTheta)
 
 
@@ -119,7 +121,7 @@ class ModelFixed(Model):
 
         Model.__init__(self,name)
         if (G.ndim>2):
-            raise(NameError("G-matrix needs to be 2-d array"));
+            raise(NameError("G-matrix needs to be 2-d array"))
         self.G = G
         self.n_param = 0
 
@@ -136,12 +138,62 @@ class ModelFixed(Model):
 
         return (self.G,None)
 
-class Noise:
+class NoiseModel:
     """
     Abstract PCM Noise model class
     """
-    def __init__(self,name):
-        self.name = name
+    def __init__(self):
+        pass
 
     def predict(self,theta):
         raise(NameError("predict needs to be implemented"))
+
+    def inverse(self,theta): 
+        raise(NameError("inverse needs to be implemented"))
+
+    def derivative(self,theta): 
+        raise(NameError("derivative needs to be implemented"))
+
+class IndependentNoise(NoiseModel):
+    def __init__(self):
+        """
+        Creator for Noise model
+        """ 
+        NoiseModel.__init__(self)
+        self.n_param = 1
+
+    def predict(self, theta):
+        return np.exp(theta)
+
+    def inverse(self, theta):
+        return 1./np.exp(theta)
+
+    def derivative(self, theta):
+        return np.exp(theta)
+
+class BlockPlusIndepNoise(NoiseModel):
+    def __init__(self,part_vec):
+        """
+        Creator for ModelFixed class
+        """ 
+        NoiseModel.__init__(self)
+        self.n_param = 1
+        self.part_vec = part_vec
+        self.N = part_vec.shape[0]
+        self.B = pcm.matrix.indicator(part_vec)
+        self.BTB = np.sum(self.B,axis=0)
+        self.BBT = self.B @ self.B.T
+
+    def predict(self, theta):
+        S = self.BBT * exp(theta[0]) + np.indentity(self.N) * exp(theta[1])
+        return S
+
+    def inverse(self, theta):
+        sb = exp(theta[0]) # Block parameter
+        se = exp(theta[1])
+        A = eye(self.N) * se / sb + self.B.T @ self.B
+        S = (eye(self.N) - B @ solve(A,self.B.T)) / se
+        return S
+
+    def derivative(self, theta):
+        return np.exp(theta)

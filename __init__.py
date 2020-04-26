@@ -7,3 +7,4 @@ from PcmPy.sim import make_design
 from PcmPy.sim import make_dataset 
 import PcmPy.sim as sim
 import PcmPy.matrix as matrix
+import PcmPy.inference as inference

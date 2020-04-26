@@ -8,13 +8,13 @@ Inference module for PCM toolbox with main functionality for model fitting and e
 
 import numpy as np
 from numpy.linalg import solve, eigh, cholesky
-from numpy import sum, diag, log, eye
+from numpy import sum, diag, log, eye, exp
 from PcmPy import model
 
 
 def likelihood_individ(theta, M, YY, Z, X=None, 
                        Noise=model.IndependentNoise(),
-                       num_channels=1, fit_scale=False, return_deriv=0):
+                       n_channel=1, fit_scale=False, return_deriv=0):
     """
     Negative Log-Likelihood of the data and derivative in respect to the parameters
 
@@ -31,7 +31,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
             Fixed effects design matrix - will be accounted for by ReML
         Noise (pcm.Noisemodel)
             Pcm-noise mode to model block-effects (default: Indentity)
-        num_channels (int)
+        n_channel (int)
             Number of channels
         fit_scale (bool)
             Fit a scaling parameter for the model (default is False)
@@ -52,27 +52,29 @@ def likelihood_individ(theta, M, YY, Z, X=None,
     if fit_scale:
         scale_param = theta[model_params+1]
     else:
-        scale_param = 1
-    Gs = G * np.exp(scale_param)
+        scale_param = 0
+    Gs = G * exp(scale_param)
 
     # Get the noise model parameters and noise prediction
     noise_params = theta[M.n_param+fit_scale:]
     S = Noise.predict(noise_params)
 
     Gs = (Gs + Gs.T) / 2 # Symmetrize
-    s, U = eigh(Gs)
-    idx = s > (10e-10) # Increased to 10*eps from 2*eps
-    Zu = Z @ U[:, idx]
+    Glambda, GU = eigh(Gs)
+    idx = Glambda > (10e-10) # Increased to 10*eps from 2*eps
+    Zu = Z @ GU[:, idx]
 
     # Apply the matrix inversion lemma. The following statement is the same as
     # V   = (Z*Gs*Z' + S(noiseParam));
     # iV  = pinv(V);
 
     iS = Noise.inverse(noise_params)
-    if type(iS) is float:
-        iV = (eye(N) - Zu / (diag(1./dS(idx)) * iS +Zu.T @ Zu) @ Zu.T) * iS
+    if iS.ndim == 1:
+        matrixInv = (diag(1 / Glambda[idx]) * iS[0] + Zu.T @ Zu)
+        iV = (eye(N) - Zu @ solve(matrixInv, Zu.T)) * iS[0]
     else:
-        iV = iS - iS @ Zu / (diag(1./dS(idx)) +Zu.T @ iS @ Zu) @ Zu.T @ iS
+        matrixInv = (diag(1 / Glambda[idx])  + Zu.T @ iS @ Zu)
+        iV = iS - iS @ Zu @ solve(matrixInv,Zu.T) @ iS
     # For ReML, compute the modified inverse iVr
     if X is not None:
         iVX   = iV @ X
@@ -81,50 +83,38 @@ def likelihood_individ(theta, M, YY, Z, X=None,
         iVr = iV
 
     # Computation of (restricted) likelihood
-    ldet = -2 * sum(log(diag(linalg.chol(iV)))) # Safe computation 
-    llik = -P/2 * ldet - 0.5 * sum(iVr * YY)
+    ldet = -2 * sum(log(diag(cholesky(iV)))) # Safe computation 
+    llik = -n_channel / 2 * ldet - 0.5 * sum(iVr * YY)
     if X is not None:
         # P/2 log(det(X'V^-1*X))
-        llik = llik - P * sum(log(diag(cholesky(X.T @ iV @X)))) #
+        llik = llik - n_channel * sum(log(diag(cholesky(X.T @ iV @X)))) #
     negLogLike = -llik  # Invert sign
 
     if return_deriv == 0: 
         return negLogLike
 
     # Calculate the first derivative
-    # A = iVr @  Z
-    # B = YY @ iVr
-    #  Get the derivatives for all the parameters
-    # for i in range(Model.n_param):
-            #iVdV{i} = A*pcm_blockdiag(dGdtheta(:,:,i),zeros(numRuns))*Z'*exp(scaleParam);
-            #dLdtheta(i,1) = -P/2*trace(iVdV{i})+1/2*traceABtrans(iVdV{i},B);
-        # Get the derivatives for the Noise parameters
-        # i = M.numGparams+1;  % Which number parameter is it?
-        # if (isempty(OPT.S))
-        #     dVdtheta{i}          = eye(N)*exp(noiseParam);
-        # else
-        #     dVdtheta{i}          = OPT.S.S*exp(noiseParam);
-        # end;
-        # iVdV{i}     = iVr*dVdtheta{i};
-        # dLdtheta(i,1) = -P/2*trace(iVdV{i})+1/2*traceABtrans(iVdV{i},B);
-    """
-     % Get the derivatives for the scaling parameters
-     if (OPT.fitScale)
-        i = M.numGparams+2;    % Which number parameter is it?
-        iVdV{i}          = A*pcm_blockdiag(G,zeros(numRuns))*Z'*exp(scaleParam);
-        dLdtheta(i,1)    = -P/2*trace(iVdV{i})+1/2*traceABtrans(iVdV{i},B);
-        % dLdtheta(i,1)    = dLdtheta(i,s) - scaleParam/OPT.scalePrior; % add prior to scale parameter
-     end;
+    A = iVr @  Z
+    B = YY @ iVr
+    iVdV = []
+    dLdtheta = np.zeros(theta.shape)
+    # Get the derivatives for all the parameters
+    for i in range(Model.n_param):
+        iVdV.append(A @ dGdtheta[:,:,i] @ Z.T * exp(scaleParam))
 
-
-    % Get the derivatives for the block parameter
-    if (~isempty(OPT.runEffect) && ~isempty(OPT.runEffect))
-        i = M.numGparams+2+OPT.fitScale;  % Which number parameter is it?
-        %C          = A*pcm_blockdiag(zeros(size(G,1)),eye(numRuns));
-        iVdV{i}     = A*pcm_blockdiag(zeros(K),eye(numRuns))*Z'*exp(runParam);
+    # Get the derivatives for the scaling parameters
+    if fit_scale:
+        i = M.n_param
+        iVdV.append(A @ G @ Z.T * exp(scaleParam))
+        
+    # Get the derivatives for the Noise parameters
+    i = M.n_param + 1 + fit_scale
+    for j in range(Noise.n_param):
+        dVdtheta = Noise.derivative(i)
+        iVdV.append(iVr @ dVdtheta)
         dLdtheta(i,1) = -P/2*trace(iVdV{i})+1/2*traceABtrans(iVdV{i},B);
-    end;
 
+    
     % invert sign
     dnl   = -dLdtheta;
     numTheta=i;

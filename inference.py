@@ -8,7 +8,7 @@ Inference module for PCM toolbox with main functionality for model fitting and e
 
 import numpy as np
 from numpy.linalg import solve, eigh, cholesky
-from numpy import sum, diag, log, eye, exp
+from numpy import sum, diag, log, eye, exp, trace, einsum
 from PcmPy import model
 
 
@@ -43,6 +43,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
     """
     N,NC = YY.shape
     Q = Z.shape[1]
+    n_param = theta.shape[0]
 
     # Get G-matrix and derivative of G-matrix in respect to parameters
     model_params = theta[range(M.n_param)]
@@ -50,7 +51,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
 
     # Get the scale parameter and scale G by it
     if fit_scale:
-        scale_param = theta[model_params+1]
+        scale_param = theta[M.n_param]
     else:
         scale_param = 0
     Gs = G * exp(scale_param)
@@ -69,9 +70,9 @@ def likelihood_individ(theta, M, YY, Z, X=None,
     # iV  = pinv(V);
 
     iS = Noise.inverse(noise_params)
-    if iS.ndim == 1:
-        matrixInv = (diag(1 / Glambda[idx]) * iS[0] + Zu.T @ Zu)
-        iV = (eye(N) - Zu @ solve(matrixInv, Zu.T)) * iS[0]
+    if type(iS) is np.float64:
+        matrixInv = (diag(1 / Glambda[idx]) / iS + Zu.T @ Zu)
+        iV = (eye(N) - Zu @ solve(matrixInv, Zu.T)) * iS
     else:
         matrixInv = (diag(1 / Glambda[idx])  + Zu.T @ iS @ Zu)
         iV = iS - iS @ Zu @ solve(matrixInv,Zu.T) @ iS
@@ -84,51 +85,53 @@ def likelihood_individ(theta, M, YY, Z, X=None,
 
     # Computation of (restricted) likelihood
     ldet = -2 * sum(log(diag(cholesky(iV)))) # Safe computation 
-    llik = -n_channel / 2 * ldet - 0.5 * sum(iVr * YY)
+    llik = -n_channel / 2 * ldet - 0.5 * einsum('ij,ij->',iVr, YY)
     if X is not None:
         # P/2 log(det(X'V^-1*X))
         llik = llik - n_channel * sum(log(diag(cholesky(X.T @ iV @X)))) #
-    negLogLike = -llik  # Invert sign
 
+    # If no derivative - exit here 
     if return_deriv == 0: 
-        return negLogLike
+        return -llik
 
     # Calculate the first derivative
     A = iVr @  Z
     B = YY @ iVr
     iVdV = []
-    dLdtheta = np.zeros(theta.shape)
-    # Get the derivatives for all the parameters
-    for i in range(Model.n_param):
-        iVdV.append(A @ dGdtheta[:,:,i] @ Z.T * exp(scaleParam))
 
-    # Get the derivatives for the scaling parameters
+    # Get the quantity iVdV = inv(V)dVdtheta for model parameters
+    for i in range(M.n_param):
+        iVdV.append(A @ dGdtheta[i,:,:] @ Z.T * exp(scale_param))
+
+    # Get iVdV for scaling parameter
     if fit_scale:
-        i = M.n_param
-        iVdV.append(A @ G @ Z.T * exp(scaleParam))
-        
-    # Get the derivatives for the Noise parameters
-    i = M.n_param + 1 + fit_scale
+        iVdV.append(A @ G @ Z.T * exp(scale_param))
+
+    # Get iVdV for Noise parameters
     for j in range(Noise.n_param):
-        dVdtheta = Noise.derivative(i)
-        iVdV.append(iVr @ dVdtheta)
-        dLdtheta(i,1) = -P/2*trace(iVdV{i})+1/2*traceABtrans(iVdV{i},B);
+        dVdtheta = Noise.derivative(noise_params,j)
+        if type(dVdtheta) is np.float64:
+            iVdV.append(iVr * dVdtheta)
+        else: 
+            iVdV.append(iVr @ dVdtheta)
 
-    
-    % invert sign
-    dnl   = -dLdtheta;
-    numTheta=i;
-    end;
+    # Based on iVdV we can get he first derivative
+    dLdtheta = np.zeros((n_param,))
+    for i in range(n_param):
+        dLdtheta[i] = -n_channel / 2 * trace(iVdV[i]) + 0.5 * einsum('ij,ij->',iVdV[i], B)
 
-    % Calculate expected second derivative?
-    if (nargout>2)
-    for i=1:numTheta
-        for j=i:numTheta;
-            d2nl(i,j)=-P/2*traceABtrans(iVdV{i},iVdV{j});
-            d2nl(j,i)=d2nl(i,j);
-        end;
-    end;
-    d2nl=-d2nl;
-    end;
-    """
+    # If only first derivative, exit here 
+    if return_deriv == 1: 
+        return -llik, -dLdtheta
+
+    # Calculate expected second derivative
+    d2L = np.zeros((n_param,n_param))
+    for i in range(n_param):
+        for j in range(i, n_param):
+            d2L[i, j] = -n_channel / 2 * einsum('ij,ij->',iVdV[i],iVdV[j])
+            d2L[j, i] = d2L[i, j]
+    if return_deriv == 2: 
+        return -llik, -dLdtheta, -d2L
+    else: 
+        raise NameError('return_deriv needs to be 0, 1 or 2')
 

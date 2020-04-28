@@ -1,5 +1,6 @@
 import numpy as np
 from numpy import exp, eye, log
+import PcmPy as pcm
 
 class Model:
     """
@@ -163,13 +164,13 @@ class IndependentNoise(NoiseModel):
         self.n_param = 1
 
     def predict(self, theta):
-        return np.exp(theta)
+        return np.exp(theta[0])
 
     def inverse(self, theta):
-        return 1./np.exp(theta)
+        return 1./np.exp(theta[0])
 
-    def derivative(self, theta):
-        return np.exp(theta)
+    def derivative(self, theta, n=0):
+        return np.exp(theta[0])
 
 class BlockPlusIndepNoise(NoiseModel):
     def __init__(self,part_vec):
@@ -177,23 +178,26 @@ class BlockPlusIndepNoise(NoiseModel):
         Creator for ModelFixed class
         """ 
         NoiseModel.__init__(self)
-        self.n_param = 1
+        self.n_param = 2
         self.part_vec = part_vec
-        self.N = part_vec.shape[0]
         self.B = pcm.matrix.indicator(part_vec)
+        self.N, self.M = self.B.shape
         self.BTB = np.sum(self.B,axis=0)
         self.BBT = self.B @ self.B.T
 
     def predict(self, theta):
-        S = self.BBT * exp(theta[0]) + np.indentity(self.N) * exp(theta[1])
+        S = self.BBT * exp(theta[0]) + eye(self.N) * exp(theta[1])
         return S
 
     def inverse(self, theta):
         sb = exp(theta[0]) # Block parameter
         se = exp(theta[1])
-        A = eye(self.N) * se / sb + self.B.T @ self.B
-        S = (eye(self.N) - B @ solve(A,self.B.T)) / se
+        A = eye(self.M) * se / sb + self.B.T @ self.B
+        S = (eye(self.N) - self.B @ np.linalg.solve(A,self.B.T)) / se
         return S
 
-    def derivative(self, theta):
-        return np.exp(theta)
+    def derivative(self, theta,n=0):
+        if n==0: 
+            return self.BBT * np.exp(theta[0])
+        elif n==1:
+            return eye(self.N) * np.exp(theta[1])

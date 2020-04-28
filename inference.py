@@ -41,7 +41,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
             2: Return first and second derivative (default)
 
     """
-    N,NC = YY.shape
+    N = YY.shape[0]
     Q = Z.shape[1]
     n_param = theta.shape[0]
 
@@ -56,19 +56,17 @@ def likelihood_individ(theta, M, YY, Z, X=None,
         scale_param = 0
     Gs = G * exp(scale_param)
 
-    # Get the noise model parameters and noise prediction
+    # Get the noise model parameters
     noise_params = theta[M.n_param+fit_scale:]
-    S = Noise.predict(noise_params)
 
-    Gs = (Gs + Gs.T) / 2 # Symmetrize
-    Glambda, GU = eigh(Gs)
-    idx = Glambda > (10e-10) # Increased to 10*eps from 2*eps
-    Zu = Z @ GU[:, idx]
 
     # Apply the matrix inversion lemma. The following statement is the same as
     # V   = (Z*Gs*Z' + S(noiseParam));
     # iV  = pinv(V);
-
+    Gs = (Gs + Gs.T) / 2 # Symmetrize
+    Glambda, GU = eigh(Gs)
+    idx = Glambda > (10e-10) # Increased to 10*eps from 2*eps
+    Zu = Z @ GU[:, idx]
     iS = Noise.inverse(noise_params)
     if type(iS) is np.float64:
         matrixInv = (diag(1 / Glambda[idx]) / iS + Zu.T @ Zu)

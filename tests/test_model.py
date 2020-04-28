@@ -16,7 +16,7 @@ class TestModel(unittest.TestCase):
         M = pcm.ModelFeature("aModel",A)
         self.assertEqual(M.n_param,4)
         theta = np.array([0,1,2,3])
-        G,dG=M.calculate_G(theta)
+        G, dG = M.predict(theta)
 
     def test_model_component(self):
         C=np.zeros((3,5,5))
@@ -26,7 +26,7 @@ class TestModel(unittest.TestCase):
         theta = np.array([0,2,5])
         M = pcm.ModelComponent("bModel",C)
         self.assertEqual(M.n_param,3) 
-        G,dG=M.calculate_G(theta)
+        G, dG = M.predict(theta)
         self.assertEqual(G[2,2],np.exp(2))
         
         

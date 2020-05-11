@@ -1,5 +1,6 @@
 import numpy as np
 from numpy import exp, eye, log
+from numpy.linalg import solve, eigh, cholesky, pinv
 import PcmPy as pcm
 
 class Model:
@@ -146,22 +147,26 @@ class NoiseModel:
     def __init__(self):
         pass
 
-    def predict(self,theta):
+    def predict(self, theta):
         raise(NameError("predict needs to be implemented"))
 
-    def inverse(self,theta): 
+    def inverse(self, theta):
         raise(NameError("inverse needs to be implemented"))
 
-    def derivative(self,theta): 
+    def derivative(self, theta):
         raise(NameError("derivative needs to be implemented"))
+
+    def get_theta0(self, Y, Z, X=None):
+        raise(NameError("get_theta0 needs to be implemented"))
 
 class IndependentNoise(NoiseModel):
     def __init__(self):
         """
         Creator for Noise model
-        """ 
+        """
         NoiseModel.__init__(self)
         self.n_param = 1
+        theta0 = 0
 
     def predict(self, theta):
         return np.exp(theta[0])
@@ -172,11 +177,21 @@ class IndependentNoise(NoiseModel):
     def derivative(self, theta, n=0):
         return np.exp(theta[0])
 
+    def get_theta0(self, Y, Z, X=None):
+        N, P = Y.shape
+        if X is not None:
+            Z = np.c_[Z, X]
+        RY = Y - Z @ pinv(Z) @ Y
+        noise0 = np.sum(RY*RY)/(P * (N - Z.shape[1]))
+        if noise0 <= 0:
+            raise(NameError("Too many model factors to estimate noise variance. Consider removing terms or setting runEffect to 'none'"))
+        theta0 = log(noise0)
+
 class BlockPlusIndepNoise(NoiseModel):
     def __init__(self,part_vec):
         """
         Creator for ModelFixed class
-        """ 
+        """
         NoiseModel.__init__(self)
         self.n_param = 2
         self.part_vec = part_vec
@@ -197,7 +212,7 @@ class BlockPlusIndepNoise(NoiseModel):
         return S
 
     def derivative(self, theta,n=0):
-        if n==0: 
+        if n==0:
             return self.BBT * np.exp(theta[0])
         elif n==1:
             return eye(self.N) * np.exp(theta[1])

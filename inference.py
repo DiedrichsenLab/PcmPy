@@ -10,9 +10,10 @@ import numpy as np
 from numpy.linalg import solve, eigh, cholesky
 from numpy import sum, diag, log, eye, exp, trace, einsum
 from PcmPy import model
+import PcmPy as pcm
 
 
-def likelihood_individ(theta, M, YY, Z, X=None, 
+def likelihood_individ(theta, M, YY, Z, X=None,
                        Noise=model.IndependentNoise(),
                        n_channel=1, fit_scale=False, return_deriv=0):
     """
@@ -39,7 +40,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
             0: Do not return any derivative
             1: Return first derivative
             2: Return first and second derivative (default)
-    
+
     """
     N = YY.shape[0]
     Q = Z.shape[1]
@@ -78,18 +79,18 @@ def likelihood_individ(theta, M, YY, Z, X=None,
     if X is not None:
         iVX   = iV @ X
         iVr   = iV - iVX @ solve(X.T @ iVX, iVX.T)
-    else: 
+    else:
         iVr = iV
 
     # Computation of (restricted) likelihood
-    ldet = -2 * sum(log(diag(cholesky(iV)))) # Safe computation 
+    ldet = -2 * sum(log(diag(cholesky(iV)))) # Safe computation
     llik = -n_channel / 2 * ldet - 0.5 * einsum('ij,ij->',iVr, YY)
     if X is not None:
         # P/2 log(det(X'V^-1*X))
         llik = llik - n_channel * sum(log(diag(cholesky(X.T @ iV @X)))) #
 
-    # If no derivative - exit here 
-    if return_deriv == 0: 
+    # If no derivative - exit here
+    if return_deriv == 0:
         return -llik
 
     # Calculate the first derivative
@@ -110,7 +111,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
         dVdtheta = Noise.derivative(noise_params,j)
         if type(dVdtheta) is np.float64:
             iVdV.append(iVr * dVdtheta)
-        else: 
+        else:
             iVdV.append(iVr @ dVdtheta)
 
     # Based on iVdV we can get he first derivative
@@ -118,8 +119,8 @@ def likelihood_individ(theta, M, YY, Z, X=None,
     for i in range(n_param):
         dLdtheta[i] = -n_channel / 2 * trace(iVdV[i]) + 0.5 * einsum('ij,ij->',iVdV[i], B)
 
-    # If only first derivative, exit here 
-    if return_deriv == 1: 
+    # If only first derivative, exit here
+    if return_deriv == 1:
         return -llik, -dLdtheta
 
     # Calculate expected second derivative
@@ -128,12 +129,13 @@ def likelihood_individ(theta, M, YY, Z, X=None,
         for j in range(i, n_param):
             d2L[i, j] = -n_channel / 2 * einsum('ij,ij->',iVdV[i],iVdV[j])
             d2L[j, i] = d2L[i, j]
-    if return_deriv == 2: 
+    if return_deriv == 2:
         return -llik, -dLdtheta, -d2L
-    else: 
+    else:
         raise NameError('return_deriv needs to be 0, 1 or 2')
 
-def fit_model_individ(Data, M, condition_vec=None, partition_vec=None,run_effect='fixed', fit_scale=False, noise_cov=None, algorithm=None, optim_param=None,theta0=None):
+def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
+                    noise_cov=None, algorithm=None, optim_param=None,theta0=None):
     """
     Fits pattern component model(s) specified by M to data from a number of
     subjects.
@@ -143,18 +145,6 @@ def fit_model_individ(Data, M, condition_vec=None, partition_vec=None,run_effect
             List data set has partition and condition descriptors
         M (pcm.Model or list of pcm.Models)
             Models to be fitted on the data sets
-        condition_vec (np.array or list of np.arrays)
-            condition assignment vector
-            for each subject. Rows of conditionVec{subj} define
-            condition assignment of rows of Y{subj}.
-            If a single vector is provided, it is assumed to me the
-            same for all subjects.
-            If the (elements of) conditionVec are matrices, it is
-            assumed to be the design matrix Z, allowing the
-            specification individualized models
-        partition_vec (np.array or list of np.arrays)
-            partition assignment vector
-            for each subject. 
         run_effect (string)
             'random': Models variance of the run effect for each subject
                 as a seperate random effects parameter.
@@ -162,22 +152,22 @@ def fit_model_individ(Data, M, condition_vec=None, partition_vec=None,run_effect
                  implicitly using ReML.
             'none': No modeling of the run Effect
         fit_scale (bool)
-            Fit a additional scale parameter for each subject? Default is set to False. 
+            Fit a additional scale parameter for each subject? Default is set to False.
         algorithm (string)
             Either 'newton' or 'minimize' - provides over-write for model specific algorithms
         noise_cov
             Optional specific covariance structure of the noise
-            {#Subjects} = cell array of N_s x N_s matrices 
+            {#Subjects} = cell array of N_s x N_s matrices
             Number of max minimization iterations. Default is 1000.
-            S(#Subjects).S and .invS: Structure of the N_s x N_s 
+            S(#Subjects).S and .invS: Structure of the N_s x N_s
             normal and inverse covariances matrices
-        optim_param (dict) 
-            Additional paramters to be passed to the optimizer 
+        optim_param (dict)
+            Additional paramters to be passed to the optimizer
         theta0 (list of np.arrays)
             List of starting values (same format as return argument theta)
     Returns
         RES (pandas.dataframe)
-            Dataframe with the fields: 
+            Dataframe with the fields:
             SN:                 Subject number
             likelihood:         log-likelihood
             scale:              Scale parameter (if fitscale = 1)-exp(theta_s)
@@ -185,30 +175,30 @@ def fit_model_individ(Data, M, condition_vec=None, partition_vec=None,run_effect
             run:                Run parameter (if run = 'random')
             iterations:         Number of interations for model fit
             time:               Elapsed time in sec
-        theta (list of np.arrays) 
+        theta (list of np.arrays)
             List of estimated model parameters, each a
             #params x #numSubj np.array
         G_pred (list of np.arrays)
             List of estimated G-matrices under the model
     """
 
-    # Get the number of subjects 
+    # Get the number of subjects
     if type(Data) is list:
         n_subj = len(Data)
     else:
         n_subj = 1
         Data = [Data]
 
-    # Get the number of models 
+    # Get the number of models
     if type(M) is list:
         n_model = len(M)
     else:
         n_model = 1
         M = [M]
-    
-    # Preallocate output structures 
+
+    # Preallocate output structures
     iterab = [['likelihood','noise'],range(n_model)]
-    index = pd.MultiIndex.from_product(iterab, names=['variable', 'model'])   
+    index = pd.MultiIndex.from_product(iterab, names=['variable', 'model'])
     RES = pd.Dataframe(np.zeros((n_subj, n_model*2)), columns=index)
     theta0 = [np.zeros((3,3))]*3
 
@@ -217,12 +207,12 @@ def fit_model_individ(Data, M, condition_vec=None, partition_vec=None,run_effect
 
     # Set up all parameters for the upcoming fit
     for s in range(n_subj):
-        Z,X,YY,Noise,N,P,G_hat = set_up_fit(Data,partitionVec,conditionVec,runEffect,noise_cov = noise_cov)
+        Z,X,YY,Noise,G_hat = set_up_fit(Data,partitionVec,conditionVec,runEffect,noise_cov = noise_cov)
 
     # Initialize list and dataframe for results
 
     # Loop over subject and models and provide inidivdual fits
-    for s in range(n_subj): 
+    for s in range(n_subj):
         for m in range (n_models):
             printf('Fitting Subj',s,'model',m)
             # Get starting guess for theta0 is not provideddf
@@ -237,39 +227,39 @@ def fit_model_individ(Data, M, condition_vec=None, partition_vec=None,run_effect
                     if (scaling < 10e-5):
                         scaling = 10e-5
                     th0 = np.concatinate(th0,log(scaling))
-                th0 = np.concatinate(th0,Noise.theta0);
-        
+                th0 = np.concatinate(th0,Noise.theta0)
+
             #  Now do the fitting, using the preferred optimization routine
             if (M[m].fitAlgorithm=='newton'):
-                fcn = @(x) pcm_likelihoodIndivid(x,YY{s},M{m},Z{s},X{s},P(s),OPT);
-                [theta_hat{m}(:,s),T.likelihood(s,m),T.iterations(s,m),T.reg(s,m),INFO.regH{s,m},INFO.thetaH{s,m}]= ... 
-                    pcm_NR(theta0{m}(:,s),fcn,fitOPT); 
+                fcn = lambda x: likelihood_individ(x, M[m], YY, X=X, Noise = Noise,
+                                                    fit_scale = fit_scale, return_deriv = 2)
+                # theta_hat, RES.likelihood[s,m], RES.iterations(s,m) = pcm.optimize.newton(th0, fcn, **optim_param)
             else:
-                raise(NameError('not implemented yet')
+                raise(NameError('not implemented yet'))
 
-            G_pred[m](:,:,s)  =  pcm_calculateG(M{m},theta_hat{m}(1:M{m}.numGparams,s));
-            T.noise(s,m)      =  exp(theta_hat{m}(M{m}.numGparams+1,s));
-            if (fitScale)
-                T.scale(s,m)      = exp(theta_hat{m}(M{m}.numGparams+2,s));
-            end
-        
-            T.time(s,m)       = toc;
+            # G_pred[m](:,:,s)  =  pcm_calculateG(M{m},theta_hat{m}(1:M{m}.numGparams,s));
+            # T.noise(s,m)      =  exp(theta_hat{m}(M{m}.numGparams+1,s));
+            # if (fitScale)
+            #     T.scale(s,m)      = exp(theta_hat{m}(M{m}.numGparams+2,s));
+            # end
 
-def set_up_fit(Data, run_effect = 'none', noise_cov = None): 
-    """ 
-    Pre-calculates and sets design matrices, etc for the PCM fit 
+            # T.time(s,m)       = toc;
+
+def set_up_fit(Data, run_effect = 'none', noise_cov = None):
+    """
+    Pre-calculates and sets design matrices, etc for the PCM fit
     INPUT
         Data (pcm.dataset)
             Contains activity data (measurement), and obs_descriptors partition and condition
         run_effect
             For fmri data can be 'none', 'random', or 'fixed'
         noise_cov
-            List of noise covariances for the different partitions 
-    RETURNS 
+            List of noise covariances for the different partitions
+    RETURNS
         Z
             Design matrix for random effects
         X
-            Design matrix for fixed effects 
+            Design matrix for fixed effects
         YY
             Quadratic form of the data (Y Y')
         Noise
@@ -277,36 +267,36 @@ def set_up_fit(Data, run_effect = 'none', noise_cov = None):
         G_hat
             Crossvalidated estimate of second moment of U
     """
-    # Make design matrix 
-    cV = Data.obs_descriptors['condition']
+    # Make design matrix
+    cV = Data.obs_descriptors['cond_vec']
     if cV.ndim == 1:
         Z = pcm.matrix.indicator(cV)
     elif cv.ndim == 2:
         Z = cV;
     n_reg = Z.shape[1]
-    
-    # Get data 
+
+    # Get data
     Y = Data.measurements
     N = Y.shape[0]
     YY = Y @ Y.T
 
-    # Initialize fixed effects 
+    # Initialize fixed effects
     X = None
 
     #  Depending on the way of dealing with the run effect, set up matrices and noise
     if run_effect == 'fixed':
-        X = pcm_indicatorMatrix(Data.obs_descriptors['partition']);
+        X = pcm.matrix.indicator(Data.obs_descriptors['part_vec']);
     if run_effect == 'none' or run_effect == 'fixed':
-        if noice_cov is None:
-            Noise = BlockPlusIndepNoise(Data.obs_descriptors['partition'])
-        else: 
+        if noise_cov is None:
+            Noise = model.IndependentNoise()
+        else:
             raise(NameError('not implemented'))
     if run_effect == 'random':
-        X = pcm_indicatorMatrix(Data.obs_descriptors['partition']);
-        if noice_cov is None:
-            Noise = BlockPlusIndepNoise(Data.obs_descriptors['partition'])
-        else: 
+        X = pcm.matrix.indicator(Data.obs_descriptors['partition']);
+        if noise_cov is None:
+            Noise = model.BlockPlusIndepNoise(Data.obs_descriptors['part_vec'])
+        else:
             raise(NameError('not implemented'))
 
     # Estimate noise parameters starting values
-    Noise.get_theta0(Y,X,Z)
+    Noise.get_theta0(Y,Z,X)

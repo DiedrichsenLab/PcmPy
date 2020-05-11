@@ -133,119 +133,180 @@ def likelihood_individ(theta, M, YY, Z, X=None,
     else: 
         raise NameError('return_deriv needs to be 0, 1 or 2')
 
-def optim_nr(theta0, lossfcn, max_iter=80, thres= 1e-4, hess_reg=0.01, 
-             regularization='L',verbose=0):
+def fit_model_individ(Data, M, condition_vec=None, partition_vec=None,run_effect='fixed', fit_scale=False, noise_cov=None, algorithm=None, optim_param=None,theta0=None):
     """
-    Minimize a loss function using Newton-Raphson with automatic regularization 
-
-    Parameters:
-        theta (np.array)
-            Vector of parameter starting values
-        lossfcn (fcn)
-            Handle to loss function that needs to return 
-            a) Loss (Negative log-likelihood)
-            b) First derivative of the Loss
-            c) Expected second derivative of the loss
-        max_iter (int)
-            Maximal number of iterations (default: 80)
-        thres (float)
-            Threshold for change in Loss function (default: 1e-4)
-        hess_reg (float)
-            starting regulariser on the Hessian matrix (default 1)
-        regularization (string)
-            'L': Levenberg
-            'LM': Levenberg-Marquardt
-            'sEig':smallest Eigenvalue (default)
-        verbose (int)
-             0: No feedback,
-             1:Important warnings
-             2:full feedback regularisation
-    Returns: 
-            theta (np.array)
-                theta at minimum 
-            loss (float)
-                minimal loss
-            info (dict)
-                Dictionary with more information abuot the fit
+    Fits pattern component model(s) specified by M to data from a number of
+    subjects.
+    The model parameters are all individually fit.
+    INPUT:
+        Data (pcm.Dataset or list of pcm.Datasets)
+            List data set has partition and condition descriptors
+        M (pcm.Model or list of pcm.Models)
+            Models to be fitted on the data sets
+        condition_vec (np.array or list of np.arrays)
+            condition assignment vector
+            for each subject. Rows of conditionVec{subj} define
+            condition assignment of rows of Y{subj}.
+            If a single vector is provided, it is assumed to me the
+            same for all subjects.
+            If the (elements of) conditionVec are matrices, it is
+            assumed to be the design matrix Z, allowing the
+            specification individualized models
+        partition_vec (np.array or list of np.arrays)
+            partition assignment vector
+            for each subject. 
+        run_effect (string)
+            'random': Models variance of the run effect for each subject
+                as a seperate random effects parameter.
+            'fixed': Consider run effect a fixed effect, will be removed
+                 implicitly using ReML.
+            'none': No modeling of the run Effect
+        fit_scale (bool)
+            Fit a additional scale parameter for each subject? Default is set to False. 
+        algorithm (string)
+            Either 'newton' or 'minimize' - provides over-write for model specific algorithms
+        noise_cov
+            Optional specific covariance structure of the noise
+            {#Subjects} = cell array of N_s x N_s matrices 
+            Number of max minimization iterations. Default is 1000.
+            S(#Subjects).S and .invS: Structure of the N_s x N_s 
+            normal and inverse covariances matrices
+        optim_param (dict) 
+            Additional paramters to be passed to the optimizer 
+        theta0 (list of np.arrays)
+            List of starting values (same format as return argument theta)
+    Returns
+        RES (pandas.dataframe)
+            Dataframe with the fields: 
+            SN:                 Subject number
+            likelihood:         log-likelihood
+            scale:              Scale parameter (if fitscale = 1)-exp(theta_s)
+            noise:              Noise parameter- exp(theta_eps)
+            run:                Run parameter (if run = 'random')
+            iterations:         Number of interations for model fit
+            time:               Elapsed time in sec
+        theta (list of np.arrays) 
+            List of estimated model parameters, each a
+            #params x #numSubj np.array
+        G_pred (list of np.arrays)
+            List of estimated G-matrices under the model
     """
-    CATCHEXP = {'MATLAB:nearlySingularMatrix','MATLAB:singularMatrix',...
-    'MATLAB:illConditionedMatrix','MATLAB:posdef',...
-    'MATLAB:nearlySingularMatrix','MATLAB:eig:matrixWithNaNInf'};
 
-    # Initialize Interations
-    dF = np.Inf;
-    H = theta0.shape[0]) # Number of parameters
-    hess_reg = hess_reg * eye(H,H) # Regularization on Hessian 
-    theta = theta0
-    dL = inf
-    for k in range(max_iter)
-        # If more than the first interation: Try to update theta
-        if k > 0:
-            # Fisher scoring: update dh = inv(ddF/dhh)*dF/dh
-            # if it fails increase regularisation until dFdhh is invertible
-            # Add regularisation to second derivative
-            # ----------------------------------------------------------------------
-            while true
-                try:
-                    if (regularization == 'LM'): # Levenberg-Marquardt
-                        H = dFdhh + diag(diag(dFdhh)) * hess_reg
-                        dtheta = solve(H,dFdh)
-                    elif (regularization == 'L'): # Levenberg
-                        H = dFdhh + eye(dFdhh.shape[0]) * hess_reg
-                        dtheta = solve(H,dFdh)
-                    elif (regularizaiton == 'sEig'): 
-                        [LH,VH]=eigh(dFdhh)
-                        lH(lH<hess_reg) = hess_reg  # Increase the smallest 
-                        dtheta = (VH * 1/lh) @ VH.T @ dFdh; 
-                except ValueError: # Any error  
-                        if verbose == 2:
-                            print('Ill-conditioned Hessian. Regularisation %2.3f\n',hess_reg)
-                        hess_reg = hess_reg*10
-                        if hess_reg > 100000:
-                            if verbose > 0:
-                                print('Cant regularise second derivative.. Giving up\n')
-                            exitflag=3 # Regularisation increased too much 
-                            break # Give up
-            theta = theta - dtheta
+    # Get the number of subjects 
+    if type(Data) is list:
+        n_subj = len(Data)
+    else:
+        n_subj = 1
+        Data = [Data]
 
-        # Record the current theta 
-        thetaH[:,k] = theta
-        regH[k] = hess_reg
+    # Get the number of models 
+    if type(M) is list:
+        n_model = len(M)
+    else:
+        n_model = 1
+        M = [M]
+    
+    # Preallocate output structures 
+    iterab = [['likelihood','noise'],range(n_model)]
+    index = pd.MultiIndex.from_product(iterab, names=['variable', 'model'])   
+    RES = pd.Dataframe(np.zeros((n_subj, n_model*2)), columns=index)
+    theta0 = [np.zeros((3,3))]*3
 
-        # Evaluate the current likelihood 
-        nl[k], dFdh, dFdhh = likefcn(theta)
-        #except: # Catch errors based on invalid parameter settings
-        #if any(strcmp(ME.identifier,CATCHEXP))
-        #    if (k==1)
-        #        error('bad initial values for theta');
-        #    else
-        #        nl(k)=inf;         % Set new likelihood to -inf: take a step #back
-        #    end;
-        #else
-        #    ME.rethrow;
-        #end;
-        # Safety check if negative likelihood decreased
-        if (k>1 and (nl[k] - nl[k-1])>1e-16):
-            hess_reg = hess_reg * 10 # Increase regularisation
-            if verbose == 2:
-                printf('Step back. Regularisation %2.3f\n',hess_reg)
-            theta = thetaH(:,k-1);
-            thetaH[:,k]=theta;
-            nl[k]=nl[k-1]
-            dFdh = dFdh_old
-            dFdhh = dFdhh_old
-            dL = inf # Definitely try again
+    # Determine optimal algorithm for each of the models
+    # M = pcm.optimize.best_algorithm(M,algorithm)
+
+    # Set up all parameters for the upcoming fit
+    for s in range(n_subj):
+        Z,X,YY,Noise,N,P,G_hat = set_up_fit(Data,partitionVec,conditionVec,runEffect,noise_cov = noise_cov)
+
+    # Initialize list and dataframe for results
+
+    # Loop over subject and models and provide inidivdual fits
+    for s in range(n_subj): 
+        for m in range (n_models):
+            printf('Fitting Subj',s,'model',m)
+            # Get starting guess for theta0 is not provideddf
+            if len(theta0)<m or theta0[m].shape[1]<s:
+                M[m].get_startingval(G[s,:,:])
+                th0 = M[m].theta0
+                if (fitScale):
+                    G0 = predict(M[m],M[m].theta0)
+                    g0 = G0.reshape((-1,))
+                    g_hat = G_hat[s,:,:].reshape((-1,))
+                    scaling = (g0 @ g_hat) / (g0 @ g0)
+                    if (scaling < 10e-5):
+                        scaling = 10e-5
+                    th0 = np.concatinate(th0,log(scaling))
+                th0 = np.concatinate(th0,Noise.theta0);
+        
+            #  Now do the fitting, using the preferred optimization routine
+            if (M[m].fitAlgorithm=='newton'):
+                fcn = @(x) pcm_likelihoodIndivid(x,YY{s},M{m},Z{s},X{s},P(s),OPT);
+                [theta_hat{m}(:,s),T.likelihood(s,m),T.iterations(s,m),T.reg(s,m),INFO.regH{s,m},INFO.thetaH{s,m}]= ... 
+                    pcm_NR(theta0{m}(:,s),fcn,fitOPT); 
+            else:
+                raise(NameError('not implemented yet')
+
+            G_pred[m](:,:,s)  =  pcm_calculateG(M{m},theta_hat{m}(1:M{m}.numGparams,s));
+            T.noise(s,m)      =  exp(theta_hat{m}(M{m}.numGparams+1,s));
+            if (fitScale)
+                T.scale(s,m)      = exp(theta_hat{m}(M{m}.numGparams+2,s));
+            end
+        
+            T.time(s,m)       = toc;
+
+def set_up_fit(Data, run_effect = 'none', noise_cov = None): 
+    """ 
+    Pre-calculates and sets design matrices, etc for the PCM fit 
+    INPUT
+        Data (pcm.dataset)
+            Contains activity data (measurement), and obs_descriptors partition and condition
+        run_effect
+            For fmri data can be 'none', 'random', or 'fixed'
+        noise_cov
+            List of noise covariances for the different partitions 
+    RETURNS 
+        Z
+            Design matrix for random effects
+        X
+            Design matrix for fixed effects 
+        YY
+            Quadratic form of the data (Y Y')
+        Noise
+            Noise model
+        G_hat
+            Crossvalidated estimate of second moment of U
+    """
+    # Make design matrix 
+    cV = Data.obs_descriptors['condition']
+    if cV.ndim == 1:
+        Z = pcm.matrix.indicator(cV)
+    elif cv.ndim == 2:
+        Z = cV;
+    n_reg = Z.shape[1]
+    
+    # Get data 
+    Y = Data.measurements
+    N = Y.shape[0]
+    YY = Y @ Y.T
+
+    # Initialize fixed effects 
+    X = None
+
+    #  Depending on the way of dealing with the run effect, set up matrices and noise
+    if run_effect == 'fixed':
+        X = pcm_indicatorMatrix(Data.obs_descriptors['partition']);
+    if run_effect == 'none' or run_effect == 'fixed':
+        if noice_cov is None:
+            Noise = BlockPlusIndepNoise(Data.obs_descriptors['partition'])
         else: 
-            if hess_reg > 1e-8:
-                hess_reg = hess_reg / 10 # Decrease regularization 
-        if k > 0:
-            dL = nl[k-1] - nl[k]
-        # Record current first and second derivative if we need to take a step back
-        dFdh_old = dFdh
-        dFdhh_old = dFdhh
-    
-        if dL < thres: 
-            break
-    
-    # Return likelihood
-    return theta, -likefcn(theta)
+            raise(NameError('not implemented'))
+    if run_effect == 'random':
+        X = pcm_indicatorMatrix(Data.obs_descriptors['partition']);
+        if noice_cov is None:
+            Noise = BlockPlusIndepNoise(Data.obs_descriptors['partition'])
+        else: 
+            raise(NameError('not implemented'))
+
+    # Estimate noise parameters starting values
+    Noise.get_theta0(Y,X,Z)

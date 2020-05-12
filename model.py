@@ -156,7 +156,7 @@ class NoiseModel:
     def derivative(self, theta):
         raise(NameError("derivative needs to be implemented"))
 
-    def get_theta0(self, Y, Z, X=None):
+    def set_theta0(self, Y, Z, X=None):
         raise(NameError("get_theta0 needs to be implemented"))
 
 class IndependentNoise(NoiseModel):
@@ -177,7 +177,7 @@ class IndependentNoise(NoiseModel):
     def derivative(self, theta, n=0):
         return np.exp(theta[0])
 
-    def get_theta0(self, Y, Z, X=None):
+    def set_theta0(self, Y, Z, X=None):
         N, P = Y.shape
         if X is not None:
             Z = np.c_[Z, X]
@@ -185,7 +185,7 @@ class IndependentNoise(NoiseModel):
         noise0 = np.sum(RY*RY)/(P * (N - Z.shape[1]))
         if noise0 <= 0:
             raise(NameError("Too many model factors to estimate noise variance. Consider removing terms or setting runEffect to 'none'"))
-        theta0 = log(noise0)
+        self.theta0 = log(noise0)
 
 class BlockPlusIndepNoise(NoiseModel):
     def __init__(self,part_vec):

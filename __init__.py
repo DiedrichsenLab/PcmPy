@@ -12,3 +12,4 @@ import PcmPy.matrix as matrix
 import PcmPy.inference as inference
 import PcmPy.optimize as optimize
 import PcmPy.model as model
+import PcmPy.util as util

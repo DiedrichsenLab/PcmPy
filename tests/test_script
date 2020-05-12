@@ -20,5 +20,7 @@ f.close()
 MC=pcm.ModelComponent('muscle',M[0].G)
 Z, X, YY, Noise, G_hat = pcm.inference.set_up_fit(Y[0])
 n_channel = Y[0].measurements.shape[1]
-lik,dL,d2L = pcm.inference.likelihood_individ(theta, MC, YY, Z, X=None,
-    n_channel=n_channel, return_deriv = 2,fit_scale=False, Noise=NM)
+G,Sig = pcm.util.est_G_crossval(Y[0].measurements, Z,
+                                Y[0].obs_descriptors['part_vec'])
+T, theta, INFO = pcm.inference.fit_model_individ(Y[0],MC)
+pass

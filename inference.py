@@ -11,6 +11,7 @@ from numpy.linalg import solve, eigh, cholesky
 from numpy import sum, diag, log, eye, exp, trace, einsum
 from PcmPy import model
 import PcmPy as pcm
+import pandas as pd
 
 
 def likelihood_individ(theta, M, YY, Z, X=None,
@@ -199,22 +200,18 @@ def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
     # Preallocate output structures
     iterab = [['likelihood','noise'],range(n_model)]
     index = pd.MultiIndex.from_product(iterab, names=['variable', 'model'])
-    RES = pd.Dataframe(np.zeros((n_subj, n_model*2)), columns=index)
+    RES = pd.DataFrame(np.zeros((n_subj, n_model*2)), columns=index)
     theta0 = [np.zeros((3,3))]*3
 
     # Determine optimal algorithm for each of the models
     # M = pcm.optimize.best_algorithm(M,algorithm)
 
-    # Set up all parameters for the upcoming fit
-    for s in range(n_subj):
-        Z,X,YY,Noise,G_hat = set_up_fit(Data,partitionVec,conditionVec,runEffect,noise_cov = noise_cov)
-
-    # Initialize list and dataframe for results
-
     # Loop over subject and models and provide inidivdual fits
     for s in range(n_subj):
-        for m in range (n_models):
-            printf('Fitting Subj',s,'model',m)
+        Z,X,YY,Noise,G_hat = set_up_fit(Data[s], run_effect = run_effect,
+                                       noise_cov = noise_cov)
+        for m in range (n_model):
+            print('Fitting Subj',s,'model',m)
             # Get starting guess for theta0 is not provideddf
             if len(theta0)<m or theta0[m].shape[1]<s:
                 M[m].get_startingval(G[s,:,:])
@@ -272,7 +269,7 @@ def set_up_fit(Data, run_effect = 'none', noise_cov = None):
     if cV.ndim == 1:
         Z = pcm.matrix.indicator(cV)
     elif cv.ndim == 2:
-        Z = cV;
+        Z = cV
     n_reg = Z.shape[1]
 
     # Get data
@@ -284,19 +281,23 @@ def set_up_fit(Data, run_effect = 'none', noise_cov = None):
     X = None
 
     #  Depending on the way of dealing with the run effect, set up matrices and noise
+    part_vec = Data.obs_descriptors['part_vec']
     if run_effect == 'fixed':
-        X = pcm.matrix.indicator(Data.obs_descriptors['part_vec']);
+        X = pcm.matrix.indicator(part_vec)
     if run_effect == 'none' or run_effect == 'fixed':
         if noise_cov is None:
             Noise = model.IndependentNoise()
         else:
             raise(NameError('not implemented'))
     if run_effect == 'random':
-        X = pcm.matrix.indicator(Data.obs_descriptors['partition']);
         if noise_cov is None:
-            Noise = model.BlockPlusIndepNoise(Data.obs_descriptors['part_vec'])
+            Noise = model.BlockPlusIndepNoise(part_vec)
         else:
             raise(NameError('not implemented'))
 
+    # Get a cross-validated estimate of G
+    G_hat, _ = pcm.util.est_G_crossval(Y, Z, part_vec)
+
     # Estimate noise parameters starting values
-    Noise.get_theta0(Y,Z,X)
+    Noise.set_theta0(Y,Z,X)
+    return [Z, X, YY, Noise, G_hat]

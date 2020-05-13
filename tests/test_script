@@ -17,10 +17,15 @@ import pickle
 f = open('/Users/jdiedrichsen/Python/PcmPy/demos/data_finger7T.p','rb')
 Y,M = pickle.load(f)
 f.close()
-MC=pcm.ModelComponent('muscle',M[0].G)
-Z, X, YY, Noise, G_hat = pcm.inference.set_up_fit(Y[0])
-n_channel = Y[0].measurements.shape[1]
+MC = []
+MC.append(pcm.ModelComponent('muscle',M[0].G))
+MC.append(pcm.ModelComponent('natural',M[1].G))
+MC.append(pcm.ModelComponent('muscle+nat',[M[0].G,M[1].G]))
+
+Z, X, YY, n_channel, Noise, G_hat = pcm.inference.set_up_fit(Y[0])
 G,Sig = pcm.util.est_G_crossval(Y[0].measurements, Z,
                                 Y[0].obs_descriptors['part_vec'])
-T, theta, INFO = pcm.inference.fit_model_individ(Y[0],MC)
+theta0 = [np.ones((2,7)) * np.array([[-1,0.1]]).T]*2
+opt = {'verbose':2}
+T, theta = pcm.inference.fit_model_individ(Y,MC,optim_param=opt)
 pass

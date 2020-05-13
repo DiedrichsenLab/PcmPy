@@ -136,7 +136,8 @@ def likelihood_individ(theta, M, YY, Z, X=None,
         raise NameError('return_deriv needs to be 0, 1 or 2')
 
 def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
-                    noise_cov=None, algorithm=None, optim_param=None,theta0=None):
+                    noise_cov=None, algorithm=None, optim_param={},
+                    theta0=None):
     """
     Fits pattern component model(s) specified by M to data from a number of
     subjects.
@@ -167,7 +168,7 @@ def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
         theta0 (list of np.arrays)
             List of starting values (same format as return argument theta)
     Returns
-        RES (pandas.dataframe)
+        T (pandas.dataframe)
             Dataframe with the fields:
             SN:                 Subject number
             likelihood:         log-likelihood
@@ -198,41 +199,51 @@ def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
         M = [M]
 
     # Preallocate output structures
-    iterab = [['likelihood','noise'],range(n_model)]
+    iterab = [['likelihood','noise','iterations'],range(n_model)]
     index = pd.MultiIndex.from_product(iterab, names=['variable', 'model'])
-    RES = pd.DataFrame(np.zeros((n_subj, n_model*2)), columns=index)
-    theta0 = [np.zeros((3,3))]*3
+    T = pd.DataFrame(np.zeros((n_subj, n_model * 3)), columns=index)
+    theta = [None] * n_model
 
     # Determine optimal algorithm for each of the models
     # M = pcm.optimize.best_algorithm(M,algorithm)
 
     # Loop over subject and models and provide inidivdual fits
     for s in range(n_subj):
-        Z,X,YY,Noise,G_hat = set_up_fit(Data[s], run_effect = run_effect,
-                                       noise_cov = noise_cov)
-        for m in range (n_model):
+        Z,X,YY,n_channel,Noise,G_hat = set_up_fit(Data[s], 
+                                                run_effect = run_effect,
+                                                noise_cov = noise_cov)
+        for m in range(n_model):
             print('Fitting Subj',s,'model',m)
             # Get starting guess for theta0 is not provideddf
-            if len(theta0)<m or theta0[m].shape[1]<s:
-                M[m].get_startingval(G[s,:,:])
+            if (theta0 is None) or (len(theta0) <= m) or (theta0[m].shape[1]<s):
+                M[m].set_theta0(G_hat)
                 th0 = M[m].theta0
-                if (fitScale):
+                if (fit_scale):
                     G0 = predict(M[m],M[m].theta0)
                     g0 = G0.reshape((-1,))
                     g_hat = G_hat[s,:,:].reshape((-1,))
                     scaling = (g0 @ g_hat) / (g0 @ g0)
                     if (scaling < 10e-5):
                         scaling = 10e-5
-                    th0 = np.concatinate(th0,log(scaling))
-                th0 = np.concatinate(th0,Noise.theta0)
+                    th0 = np.concatenate(th0,log(scaling))
+                th0 = np.concatenate((th0,Noise.theta0))
+            else:
+                th0 = theta0[m][:,s]
 
             #  Now do the fitting, using the preferred optimization routine
-            if (M[m].fitAlgorithm=='newton'):
-                fcn = lambda x: likelihood_individ(x, M[m], YY, X=X, Noise = Noise,
-                                                    fit_scale = fit_scale, return_deriv = 2)
-                # theta_hat, RES.likelihood[s,m], RES.iterations(s,m) = pcm.optimize.newton(th0, fcn, **optim_param)
+            if (M[m].algorithm=='newton'):
+                fcn = lambda x: likelihood_individ(x, M[m], YY, Z, X=X,
+                                Noise = Noise, fit_scale = fit_scale, return_deriv = 2,n_channel=n_channel)
+                th, l, INFO = pcm.optimize.newton(th0, fcn, **optim_param)
             else:
                 raise(NameError('not implemented yet'))
+
+            if theta[m] is None:
+                theta[m] = np.zeros((th.shape[0],n_subj))
+            theta[m][:,s] = th
+            T.loc[s,('likelihood',m)] = l
+            T.loc[s,('iterations',m)] = INFO['iter']+1
+            T.loc[s,('noise',m)] = exp(th[-Noise.n_param])
 
             # G_pred[m](:,:,s)  =  pcm_calculateG(M{m},theta_hat{m}(1:M{m}.numGparams,s));
             # T.noise(s,m)      =  exp(theta_hat{m}(M{m}.numGparams+1,s));
@@ -241,6 +252,7 @@ def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
             # end
 
             # T.time(s,m)       = toc;
+    return [T,theta]
 
 def set_up_fit(Data, run_effect = 'none', noise_cov = None):
     """
@@ -274,7 +286,7 @@ def set_up_fit(Data, run_effect = 'none', noise_cov = None):
 
     # Get data
     Y = Data.measurements
-    N = Y.shape[0]
+    N, n_channel = Y.shape
     YY = Y @ Y.T
 
     # Initialize fixed effects
@@ -296,8 +308,8 @@ def set_up_fit(Data, run_effect = 'none', noise_cov = None):
             raise(NameError('not implemented'))
 
     # Get a cross-validated estimate of G
-    G_hat, _ = pcm.util.est_G_crossval(Y, Z, part_vec)
+    G_hat, _ = pcm.util.est_G_crossval(Y, Z, part_vec, X = X)
 
     # Estimate noise parameters starting values
     Noise.set_theta0(Y,Z,X)
-    return [Z, X, YY, Noise, G_hat]
+    return [Z, X, YY, n_channel, Noise, G_hat]

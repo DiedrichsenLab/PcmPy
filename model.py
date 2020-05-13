@@ -10,6 +10,7 @@ class Model:
     def __init__(self,name):
         self.name = name
         self.n_param = 0
+        self.algorithm = 'newton' # Default optimization algorithm
 
     def predict(self,theta):
         raise(NameError("caluclate G needs to be implemented"))
@@ -60,7 +61,6 @@ class ModelFeature(Model):
             dG_dTheta[i,:,:] =  dA + dA.transpose()
         return (G,dG_dTheta)
 
-
 class ModelComponent(Model):
     """
     Component model class
@@ -78,8 +78,9 @@ class ModelComponent(Model):
         Returns:
             Model object
         """
-
         Model.__init__(self,name)
+        if type(Gc) is list: 
+            Gc = np.stack(Gc,axis=0)
         if (Gc.ndim <3):
             Gc = Gc.reshape((1,)+Gc.shape)
         self.Gc = Gc
@@ -102,6 +103,24 @@ class ModelComponent(Model):
         dG_dTheta = self.Gc * exp_theta  # This is also the derivative dexp(x)/dx = exp(x)
         G = dG_dTheta.sum(axis=0)
         return (G,dG_dTheta)
+
+    def set_theta0(self,G_hat):
+        """
+        Sets theta0 based on the crossvalidated second-moment
+
+        Parameters:
+            G_hat (numpy.ndarray)
+                Crossvalidated estimate of G 
+        """
+        if self.n_param==0:
+            self.theta0 = np.zeros((0,))
+        else:
+            X = np.zeros((G_hat.shape[0]**2, self.n_param))
+            for i in range(self.n_param):
+                X[:,i] = self.Gc[i,:,:].reshape((-1,)) 
+            h0 = pinv(X) @ G_hat.reshape((-1,1)) 
+            h0[h0<10e-4] = 10e-4 
+            self.theta0 = log(h0.reshape(-1,))
 
 class ModelFixed(Model):
     """
@@ -185,7 +204,7 @@ class IndependentNoise(NoiseModel):
         noise0 = np.sum(RY*RY)/(P * (N - Z.shape[1]))
         if noise0 <= 0:
             raise(NameError("Too many model factors to estimate noise variance. Consider removing terms or setting runEffect to 'none'"))
-        self.theta0 = log(noise0)
+        self.theta0 = np.array([log(noise0)])
 
 class BlockPlusIndepNoise(NoiseModel):
     def __init__(self,part_vec):

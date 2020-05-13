@@ -26,6 +26,7 @@ def est_G_crossval(Y, Z, part_vec, X=None, S=None):
         part_vec (numpy.ndarray)
             Vector indicating the partition number
         X (numpy.ndarray)
+            Fixed effects to be removed
         S (numpy.ndarray)
     Returns:
         G_hat (numpy.ndarray)
@@ -42,6 +43,10 @@ def est_G_crossval(Y, Z, part_vec, X=None, S=None):
     A = np.zeros((n_part,n_cond,n_channel)) # Allocate memory 
     Bp = np.zeros((n_cond,n_channel))
     G = np.zeros((n_part,n_cond,n_cond)) # Allocate memory 
+
+    # If fixed effects are given, remove
+    if X is not None:
+        Y -= X @ pinv(X) @ Y
 
     # Estimate condition means within each run and crossvalidate 
     for i in range(n_part):

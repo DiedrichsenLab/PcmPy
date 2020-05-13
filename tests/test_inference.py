@@ -63,5 +63,14 @@ class TestInference(unittest.TestCase):
         self.assertAlmostEqual(dL[1],1568.8937559476763)
         self.assertAlmostEqual(dL[2],14100.867738004352)
 
+    def test_fit_model_individ(self):
+        MC = []
+        MC.append(pcm.ModelComponent('muscle',M[0].G))
+        MC.append(pcm.ModelComponent('natural',M[1].G))
+        MC.append(pcm.ModelComponent('muscle+nat',[M[0].G,M[1].G]))
+        theta0 = [np.ones((2,7)) * np.array([[-1,0.1]]).T]*2
+        T, theta = pcm.inference.fit_model_individ(Y,MC,theta0=theta0)
+        self.assertAlmostEqual(T.likelihood[0][1],-34923.790708900)
+
 if __name__ == '__main__':
     unittest.main()

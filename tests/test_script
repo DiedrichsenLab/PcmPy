@@ -22,10 +22,19 @@ MC.append(pcm.ModelComponent('muscle',M[0].G))
 MC.append(pcm.ModelComponent('natural',M[1].G))
 MC.append(pcm.ModelComponent('muscle+nat',[M[0].G,M[1].G]))
 
-Z, X, YY, n_channel, Noise, G_hat = pcm.inference.set_up_fit(Y[0])
-G,Sig = pcm.util.est_G_crossval(Y[0].measurements, Z,
-                                Y[0].obs_descriptors['part_vec'])
-theta0 = [np.ones((2,7)) * np.array([[-1,0.1]]).T]*2
-opt = {'verbose':2}
-T, theta = pcm.inference.fit_model_individ(Y,MC,optim_param=opt)
+n_subj = len(Y)
+Z=[None]*n_subj
+X=[None]*n_subj
+YY=[None]*n_subj
+n_channel=[None]*n_subj
+G_hat=[None]*n_subj
+Noise=[None]*n_subj
+
+for i in range(n_subj):
+    Z[i], X[i], YY[i], n_channel[i], Noise[i], G_hat[i] = pcm.inference.set_up_fit(Y[i],run_effect = 'fixed')
+theta = np.zeros((2+3*7,))
+l,df,dff = pcm.inference.likelihood_group(theta, MC[2], YY, Z, X,
+                       Noise=Noise,
+                       n_channel=n_channel, fit_scale=True, 
+                       return_deriv=2)
 pass

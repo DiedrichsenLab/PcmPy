@@ -211,7 +211,8 @@ def likelihood_group(theta, M, YY, Z, X=None,
         if return_deriv>0:
             dFdh[s, indx]=res[1]
         if return_deriv==2:
-            dFdhh[s, indx, indx]=res[2]
+            ixgrid = np.ix_([s],indx,indx)
+            dFdhh[ixgrid]=res[2]
     
     # Add the prior for the scale parameter 
 

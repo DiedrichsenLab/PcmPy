@@ -207,12 +207,17 @@ def likelihood_group(theta, M, YY, Z, X=None,
         ths = theta[indx]
         res = likelihood_individ(ths, M, YY[s], Z[s], X[s],
                        Noise[s], n_channel[s], True, return_deriv = return_deriv)
-        nl[s] = res[0]
+        iS = indx_scale[0,s]
+        scale_param = theta[iS]
+        nl[s] = res[0] + scale_param**2 / (2 * scale_prior)
         if return_deriv>0:
-            dFdh[s, indx]=res[1]
+            dFdh[s, indx] = res[1]
+            dFdh[s, iS] += scale_param / scale_prior
         if return_deriv==2:
             ixgrid = np.ix_([s],indx,indx)
-            dFdhh[ixgrid]=res[2]
+            dFdhh[ixgrid] = res[2]
+            dFdhh[s, iS, iS] = +1 / scale_prior
+
     
     # Add the prior for the scale parameter 
 
@@ -221,7 +226,7 @@ def likelihood_group(theta, M, YY, Z, X=None,
     if return_deriv == 0:
         return nl
     dFdh = np.sum(dFdh,axis=0)
-    if return_derive == 1: 
+    if return_deriv == 1: 
         return [nl, dFdh]
     dFdhh = np.sum(dFdhh,axis=0)
     return [nl, dFdh, dFdhh]
@@ -311,13 +316,8 @@ def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
                 M[m].set_theta0(G_hat)
                 th0 = M[m].theta0
                 if (fit_scale):
-                    G0 = predict(M[m],M[m].theta0)
-                    g0 = G0.reshape((-1,))
-                    g_hat = G_hat[s,:,:].reshape((-1,))
-                    scaling = (g0 @ g_hat) / (g0 @ g0)
-                    if (scaling < 10e-5):
-                        scaling = 10e-5
-                    th0 = np.concatenate(th0,log(scaling))
+                    scale0 = get_scale0(M[m].predict(M[m].theta0),G_hat)
+                    np.concatenate(th0,scale0)
                 th0 = np.concatenate((th0,Noise.theta0))
             else:
                 th0 = theta0[m][:,s]
@@ -345,6 +345,113 @@ def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
 
             # T.time(s,m)       = toc;
     return [T,theta]
+
+def fit_model_group(Data, M, run_effect='fixed', fit_scale=False,
+                    noise_cov=None, algorithm=None, optim_param={},
+                    theta0=None):
+    """
+    Fits pattern component model(s) specified by M to a group of subjects
+    The model parameters are (by default) shared across subjects. Scale and noise parameters are individual for each subject. Some model parameters can also be made individual by setting M.common_param
+    INPUT:
+        Data (list of pcm.Datasets)
+            List data set has partition and condition descriptors
+        M (pcm.Model or list of pcm.Models)
+            Models to be fitted on the data sets. Optional field M.common_param indicates which model parameters are common to the group (True) and which ones are fit individually (False)
+        run_effect (string)
+            'random': Models variance of the run effect for each subject
+                as a seperate random effects parameter.
+            'fixed': Consider run effect a fixed effect, will be removed
+                 implicitly using ReML.
+            'none': No modeling of the run Effect
+        fit_scale (bool)
+            Fit a additional scale parameter for each subject? Default is set to False.
+        algorithm (string)
+            Either 'newton' or 'minimize' - provides over-write for model specific algorithms
+        noise_cov
+            Optional specific covariance structure of the noise
+            List of N_s x N_s matrices
+        optim_param (dict)
+            Additional paramters to be passed to the optimizer
+        theta0 (list of np.arrays)
+            List of starting values (same format as return argument theta)
+    Returns
+        T (pandas.dataframe)
+            Dataframe with the fields:
+            SN:                 Subject number
+            likelihood:         log-likelihood
+            scale:              Scale parameter (if fitscale = 1)-exp(theta_s)
+            noise:              Noise parameter- exp(theta_eps)
+            iterations:         Number of interations for model fit
+            time:               Elapsed time in sec
+        theta (list of np.arrays)
+            List of estimated model parameters, each a
+        G_pred (list of np.arrays)
+            List of estimated G-matrices under the model
+    """
+
+    # Get the number of subjects
+    if type(Data) is list:
+        n_subj = len(Data)
+    else:
+        n_subj = 1
+        Data = [Data]
+
+    # Get the number of models
+    if type(M) is list:
+        n_model = len(M)
+    else:
+        n_model = 1
+        M = [M]
+
+    # Preallocate output structures
+    iterab = [['likelihood','noise','iterations'],range(n_model)]
+    index = pd.MultiIndex.from_product(iterab, names=['variable', 'model'])
+    T = pd.DataFrame(np.zeros((n_subj, n_model * 3)), columns=index)
+    theta = [None] * n_model
+
+    # Determine optimal algorithm for each of the models
+    # M = pcm.optimize.best_algorithm(M,algorithm)
+
+    # Prepare the data for all the subjects
+    Z, X, YY, n_channel, G_hat, Noise, indx_scale, indx_noise = [[None]*n_subj]*8
+    for s in range(n_subj):
+        Z[s], X[s], YY[s], n_channel[s], Noise[s], G_hat[s] = pcm.inference.set_up_fit(Y[s],run_effect = run_effect,noise_cov = noise_cov[s])
+    
+    G_avrg = sum(G_hat) / n_subj
+    for m in range(n_model):
+        print('Fitting model',m)
+        # Get starting guess for theta0 is not provided
+        if (theta0 is None) or (len(theta0) <= m):
+            M[m].set_theta0(G_avrg)
+            th0 = M[m].theta0
+            for s in range(n_subj): 
+                if (fit_scale):
+                    indx_scale[s]=th0.shape[0]
+                    scale0 = get_scale0(M[m].predict(th0),G_hat[s])
+                    th0 = np.concatenate(th0,scale0)
+                indx_noise[s]=th0.shape[0]
+                th0 = np.concatenate((th0,Noise.theta0))
+        else:
+            th0 = theta0[m]
+
+        #  Now do the fitting, using the preferred optimization routine
+        if (M[m].algorithm=='newton'):
+            fcn = lambda x: likelihood_group(x, M[m], YY, Z, X=X,
+                Noise = Noise, fit_scale = fit_scale, return_deriv = 2,n_channel=n_channel)
+            theta[m], l, INFO = pcm.optimize.newton(th0, fcn, **optim_param)
+        else:
+            raise(NameError('not implemented yet'))
+
+        _,_,_,l_subj = likelihood_group(theta[m], M[m], YY, Z, X=X,
+                Noise = Noise, fit_scale = fit_scale, return_deriv = -1,n_channel=n_channel)
+        for s in range (n_subj)
+        T.loc[:,('likelihood',m)] = l_subj
+        T.loc[:,('iterations',m)] = INFO['iter']+1
+        T.loc[:,('noise',m)] = exp(theta[m][indx_noise])
+        if (fit_scale)
+            T.loc[:,('scale',m)] = exp(theta[m][indx_scale])
+    return [T,theta]
+
 
 def set_up_fit(Data, run_effect = 'none', noise_cov = None):
     """
@@ -405,3 +512,20 @@ def set_up_fit(Data, run_effect = 'none', noise_cov = None):
     # Estimate noise parameters starting values
     Noise.set_theta0(Y,Z,X)
     return [Z, X, YY, n_channel, Noise, G_hat]
+
+def get_scale0(G,G_hat): 
+    """"
+    Get the approximate (log-)scaling parameter betweeb predicted G and     estimated G_hat 
+    Parameters:
+        G       (numpy.ndarray0)
+        G_hat  (numpy.ndarry0)
+    Returns: 
+        scale0
+            log-scaling parameter
+    """
+    g = G.reshape((-1,))
+    g_hat = G_hat.reshape((-1,))
+    scaling = (g0 @ g_hat) / (g0 @ g0)
+    if (scaling < 10e-5):
+        scaling = 10e-5
+    return log(scaling)

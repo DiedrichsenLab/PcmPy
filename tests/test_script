@@ -32,7 +32,7 @@ Noise=[None]*n_subj
 
 for i in range(n_subj):
     Z[i], X[i], YY[i], n_channel[i], Noise[i], G_hat[i] = pcm.inference.set_up_fit(Y[i],run_effect = 'fixed')
-theta = np.zeros((2+3*7,))
+theta = np.array([1,-0.5,-1,1,0,-1,1,0,-1,1,0,-1,1,0,-1,1,0,-1,1,0,-1,1])
 l,df,dff = pcm.inference.likelihood_group(theta, MC[2], YY, Z, X,
                        Noise=Noise,
                        n_channel=n_channel, fit_scale=True, 

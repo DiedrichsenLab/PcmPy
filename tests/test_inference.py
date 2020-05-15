@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-test_indicator 
+test_indicator
 
 @author: jdiedrichsen
 """
 # import sys
 # sys.path.append('/Users/jdiedrichsen/Python')
 import unittest
-import PcmPy as pcm 
-import numpy as np 
+import PcmPy as pcm
+import numpy as np
 import pickle
 
 f = open('/Users/jdiedrichsen/Python/PcmPy/demos/data_finger7T.p','rb')
@@ -71,6 +71,25 @@ class TestInference(unittest.TestCase):
         theta0 = [np.ones((2,7)) * np.array([[-1,0.1]]).T]*2
         T, theta = pcm.inference.fit_model_individ(Y,MC,theta0=theta0)
         self.assertAlmostEqual(T.likelihood[0][1],-34923.790708900)
+
+    def test_likelihood_group(self):
+        MC = pcm.ModelComponent('muscle+nat',[M[0].G,M[1].G])
+        MC.common_param=[True,False]
+        n_subj = len(Y)
+        Z = [None]*n_subj
+        X = [None]*n_subj
+        YY = [None]*n_subj
+        n_channel = [None]*n_subj
+        G_hat = [None]*n_subj
+        Noise=[None]*n_subj
+
+        for i in range(n_subj):
+            Z[i], X[i], YY[i], n_channel[i], Noise[i], G_hat[i] = pcm.inference.set_up_fit(Y[i],run_effect = 'fixed')
+        theta = np.array([1,0,-1,1,0,-1,1,0,-1,1,0,-1,1,0,-1,1,0,-1,1,0,-1,1])
+        l,df,dff = pcm.inference.likelihood_group(theta, MC, YY, Z, X,
+                       Noise=Noise,
+                       n_channel=n_channel, fit_scale=True,
+                       return_deriv=2)
 
 if __name__ == '__main__':
     unittest.main()

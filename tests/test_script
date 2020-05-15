@@ -22,19 +22,6 @@ MC.append(pcm.ModelComponent('muscle',M[0].G))
 MC.append(pcm.ModelComponent('natural',M[1].G))
 MC.append(pcm.ModelComponent('muscle+nat',[M[0].G,M[1].G]))
 
-n_subj = len(Y)
-Z=[None]*n_subj
-X=[None]*n_subj
-YY=[None]*n_subj
-n_channel=[None]*n_subj
-G_hat=[None]*n_subj
-Noise=[None]*n_subj
-
-for i in range(n_subj):
-    Z[i], X[i], YY[i], n_channel[i], Noise[i], G_hat[i] = pcm.inference.set_up_fit(Y[i],run_effect = 'fixed')
-theta = np.array([1,-0.5,-1,1,0,-1,1,0,-1,1,0,-1,1,0,-1,1,0,-1,1,0,-1,1])
-l,df,dff = pcm.inference.likelihood_group(theta, MC[2], YY, Z, X,
-                       Noise=Noise,
-                       n_channel=n_channel, fit_scale=True, 
-                       return_deriv=2)
+theta0 = np.array([1,0,-1,1,0,-1,1,0,-1,1,0,-1,1,0,-1,1,0,-1,1,0,-1,1])
+T, theta = pcm.inference.fit_model_group(Y, MC, fit_scale=True)
 pass

@@ -137,19 +137,19 @@ def likelihood_individ(theta, M, YY, Z, X=None,
 
 def likelihood_group(theta, M, YY, Z, X=None,
                        Noise=model.IndependentNoise(),
-                       n_channel=1, fit_scale=True, scale_prior=10, 
+                       n_channel=1, fit_scale=True, scale_prior=10,
                        return_deriv=0):
     """
     Negative Log-Likelihood of group data and derivative in respect to the parameters
 
     Parameters:
         theta (np.array)
-            Vector of (log-)model parameters. 
+            Vector of (log-)model parameters.
             Common model parameters
                 M.n_param or sum(M.common_param)
             Participant-specific parameters (interated by subject)
                 unqiue model parameters (not in common_param)
-                scale parameter 
+                scale parameter
                 noise parameters
         M (pcm.Model)
             Model object with predict function
@@ -175,17 +175,17 @@ def likelihood_group(theta, M, YY, Z, X=None,
     n_subj = len(YY)
     n_param = theta.shape[0]
 
-    # Determine the common parameters to the group 
+    # Determine the common parameters to the group
     if hasattr(M,'common_param'):
         common_param = M.common_param
-    else: 
+    else:
         common_param = np.ones((M.n_param,))==1
-    
-    # Get the number of parameters  
+
+    # Get the number of parameters
     n_common = np.sum(common_param) # Number of common params
-    n_modsu = M.n_param - n_common # Number of subject-specific model params 
-    n_scale = int(fit_scale) # Number of scale parameters 
-    n_noise = Noise[0].n_param # Number of noise params 
+    n_modsu = M.n_param - n_common # Number of subject-specific model params
+    n_scale = int(fit_scale) # Number of scale parameters
+    n_noise = Noise[0].n_param # Number of noise params
     n_per_subj = n_modsu + n_scale + n_noise # Number of parameters per subj
 
     # Generate the indices into the theta vector
@@ -195,12 +195,12 @@ def likelihood_group(theta, M, YY, Z, X=None,
     indx_modsu = np.zeros((n_modsu,1),dtype = int) + indx_subj
     indx_scale = np.zeros((n_scale,1),dtype = int) + n_modsu + indx_subj
     indx_noise = np.array(range(n_noise),dtype = int).T + n_scale + n_modsu + indx_subj
-    
+
     # preallocate the arrays
     nl = np.zeros((n_subj,))
     dFdh = np.zeros((n_subj,n_param))
     dFdhh = np.zeros((n_subj,n_param,n_param))
-    
+
     # Loop over subjects and get individual likelihoods
     for s in range(n_subj):
         indx = np.concatenate([indx_common, indx_modsu[:,s], indx_scale[:,s], indx_noise[:,s]])
@@ -218,15 +218,15 @@ def likelihood_group(theta, M, YY, Z, X=None,
             dFdhh[ixgrid] = res[2]
             dFdhh[s, iS, iS] = +1 / scale_prior
 
-    
-    # Add the prior for the scale parameter 
 
-    # Integrate over subjects 
+    # Add the prior for the scale parameter
+
+    # Integrate over subjects
     nl = np.sum(nl, axis=0)
     if return_deriv == 0:
         return nl
     dFdh = np.sum(dFdh,axis=0)
-    if return_deriv == 1: 
+    if return_deriv == 1:
         return [nl, dFdh]
     dFdhh = np.sum(dFdhh,axis=0)
     return [nl, dFdh, dFdhh]
@@ -306,7 +306,7 @@ def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
 
     # Loop over subject and models and provide inidivdual fits
     for s in range(n_subj):
-        Z,X,YY,n_channel,Noise,G_hat = set_up_fit(Data[s], 
+        Z,X,YY,n_channel,Noise,G_hat = set_up_fit(Data[s],
                                                 run_effect = run_effect,
                                                 noise_cov = noise_cov)
         for m in range(n_model):
@@ -413,10 +413,17 @@ def fit_model_group(Data, M, run_effect='fixed', fit_scale=False,
     # M = pcm.optimize.best_algorithm(M,algorithm)
 
     # Prepare the data for all the subjects
-    Z, X, YY, n_channel, G_hat, Noise, indx_scale, indx_noise = [[None]*n_subj]*8
+    Z = [None]*n_subj
+    X = [None]*n_subj
+    YY = [None]*n_subj
+    n_channel = [None]*n_subj
+    G_hat = [None]*n_subj
+    Noise = [None]*n_subj
+    indx_scale = [None]*n_subj
+    indx_noise = [None]*n_subj
     for s in range(n_subj):
-        Z[s], X[s], YY[s], n_channel[s], Noise[s], G_hat[s] = pcm.inference.set_up_fit(Y[s],run_effect = run_effect,noise_cov = noise_cov[s])
-    
+        Z[s], X[s], YY[s], n_channel[s], Noise[s], G_hat[s] = pcm.inference.set_up_fit(Data[s],run_effect = run_effect,noise_cov = noise_cov[s])
+
     G_avrg = sum(G_hat) / n_subj
     for m in range(n_model):
         print('Fitting model',m)
@@ -424,7 +431,7 @@ def fit_model_group(Data, M, run_effect='fixed', fit_scale=False,
         if (theta0 is None) or (len(theta0) <= m):
             M[m].set_theta0(G_avrg)
             th0 = M[m].theta0
-            for s in range(n_subj): 
+            for s in range(n_subj):
                 if (fit_scale):
                     indx_scale[s]=th0.shape[0]
                     scale0 = get_scale0(M[m].predict(th0),G_hat[s])
@@ -444,11 +451,10 @@ def fit_model_group(Data, M, run_effect='fixed', fit_scale=False,
 
         _,_,_,l_subj = likelihood_group(theta[m], M[m], YY, Z, X=X,
                 Noise = Noise, fit_scale = fit_scale, return_deriv = -1,n_channel=n_channel)
-        for s in range (n_subj)
         T.loc[:,('likelihood',m)] = l_subj
         T.loc[:,('iterations',m)] = INFO['iter']+1
         T.loc[:,('noise',m)] = exp(theta[m][indx_noise])
-        if (fit_scale)
+        if (fit_scale):
             T.loc[:,('scale',m)] = exp(theta[m][indx_scale])
     return [T,theta]
 
@@ -513,13 +519,13 @@ def set_up_fit(Data, run_effect = 'none', noise_cov = None):
     Noise.set_theta0(Y,Z,X)
     return [Z, X, YY, n_channel, Noise, G_hat]
 
-def get_scale0(G,G_hat): 
+def get_scale0(G,G_hat):
     """"
-    Get the approximate (log-)scaling parameter betweeb predicted G and     estimated G_hat 
+    Get the approximate (log-)scaling parameter betweeb predicted G and     estimated G_hat
     Parameters:
         G       (numpy.ndarray0)
         G_hat  (numpy.ndarry0)
-    Returns: 
+    Returns:
         scale0
             log-scaling parameter
     """

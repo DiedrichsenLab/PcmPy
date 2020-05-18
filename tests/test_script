@@ -21,7 +21,9 @@ MC = []
 MC.append(pcm.ModelComponent('muscle',M[0].G))
 MC.append(pcm.ModelComponent('natural',M[1].G))
 MC.append(pcm.ModelComponent('muscle+nat',[M[0].G,M[1].G]))
-
-theta0 = np.array([1,0,-1,1,0,-1,1,0,-1,1,0,-1,1,0,-1,1,0,-1,1,0,-1,1])
-T, theta = pcm.inference.fit_model_group(Y, MC, fit_scale=True)
+MC.append(pcm.ModelComponent('muscle+nat_2',[M[0].G,M[1].G]))
+MC[3].common_param=np.array([False,True])
+theta0 = [np.zeros((15,)),np.zeros((15,)),np.zeros((16,)),np.zeros(22,)]
+T, theta = pcm.inference.fit_model_group(Y, MC[3], fit_scale=True)
+# T.likelihood[0][3]-T.likelihood[2][3], -160.53392271370103
 pass

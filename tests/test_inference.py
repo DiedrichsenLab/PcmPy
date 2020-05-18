@@ -91,5 +91,17 @@ class TestInference(unittest.TestCase):
                        n_channel=n_channel, fit_scale=True,
                        return_deriv=2)
 
+    def test_fit_model_group(self):
+        MC = []
+        MC.append(pcm.ModelComponent('muscle',M[0].G))
+        MC.append(pcm.ModelComponent('natural',M[1].G))
+        MC.append(pcm.ModelComponent('muscle+nat',[M[0].G,M[1].G]))
+        MC.append(pcm.ModelComponent('muscle+nat_2',[M[0].G,M[1].G]))
+        MC[3].common_param=np.array([False,True])
+        theta0 = [np.zeros((15,)),np.zeros((15,)),np.zeros((16,)),np.zeros(22,)]
+        T, theta = pcm.inference.fit_model_group(Y, MC, fit_scale=True)
+        self.assertAlmostEqual(T.likelihood[0][3]-T.likelihood[2][3],
+                                 -160.533922713701) 
+
 if __name__ == '__main__':
     unittest.main()

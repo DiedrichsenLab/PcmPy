@@ -11,7 +11,7 @@ from numpy import sum, diag, log, eye, exp, trace, einsum
 from PcmPy import model
 
 def newton(theta0, lossfcn, max_iter=80, thres= 1e-4, hess_reg=1,
-             regularization='sEig',verbose=0):
+             regularization='sEig',verbose=0, fit_indx = None):
     """
     Minimize a loss function using Newton-Raphson with automatic regularization
 
@@ -37,6 +37,8 @@ def newton(theta0, lossfcn, max_iter=80, thres= 1e-4, hess_reg=1,
              0: No feedback,
              1:Important warnings
              2:full feedback regularisation
+        fit_indx (Logical or integer vector)
+            If provided, it will only fit the parameters indicated
     Returns:
             theta (np.array)
                 theta at minimum
@@ -84,7 +86,10 @@ def newton(theta0, lossfcn, max_iter=80, thres= 1e-4, hess_reg=1,
                             print('Cant regularise second derivative.. Giving up\n')
                         exitflag=3 # Regularisation increased too much
                         break # Give up
-            theta = theta - dtheta
+            if fit_indx is None:
+                theta = theta - dtheta
+            else:
+                theta[fit_indx] = theta[fit_indx] - dtheta[fit_indx]
 
         # Record the current theta
         thetaH[:,k] = theta

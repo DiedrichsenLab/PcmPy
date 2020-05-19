@@ -417,9 +417,16 @@ def fit_model_group(Data, M, run_effect='fixed', fit_scale=False,
     # M = pcm.optimize.best_algorithm(M,algorithm)
 
     # Prepare the data for all the subjects
-    Z, X, YY, n_channel, Noise, G_hat = pcm.inference.set_up_fit(Data[s],run_effect = run_effect,noise_cov = noise_cov[s])
-
+    Z, X, YY, n_channel, Noise, G_hat = pcm.inference.set_up_fit_group(Data, run_effect = run_effect, noise_cov = noise_cov)
+    
+    # Average second moment 
     G_avrg = sum(G_hat, axis=0) / n_subj
+
+    # Initialize the different indices
+    indx_scale = [None] * n_subj
+    indx_noise = [None] * n_subj
+
+
     for m in range(n_model):
         print('Fitting model',m)
         # Get starting guess for theta0 is not provided
@@ -515,14 +522,14 @@ def fit_model_group_crossval(Data, M, run_effect='fixed', fit_scale=False,
         M = [M]
 
     # Preallocate output structures
-    iterab = [['likelihood','noise','iterations'],range(n_model)]
+    iterab = [['likelihood','noise','scale'],range(n_model)]
     index = pd.MultiIndex.from_product(iterab, names=['variable', 'model'])
     T = pd.DataFrame(np.zeros((n_subj, n_model * 3)), columns=index)
     theta = [None] * n_model
 
     # Determine optimal algorithm for each of the models
     # M = pcm.optimize.best_algorithm(M,algorithm)
-    Z, X, YY, n_channel, Noise, G_hat = set_up_fit_group(Data, run_effect = 'none', noise_cov = None)
+    Z, X, YY, n_channel, Noise, G_hat = set_up_fit_group(Data, run_effect = run_effect, noise_cov = None)
 
     # Get starting values as for a group fit
     G_avrg = sum(G_hat, axis=0) / n_subj
@@ -535,60 +542,63 @@ def fit_model_group_crossval(Data, M, run_effect='fixed', fit_scale=False,
         else:
             common = np.ones((M[m].n_param,), dtype=np.bool_)
         not_common = np.logical_not(common)
-
+        n_modsu = np.sum(not_common) # Number of subject-specific parameters 
         M[m].set_theta0(G_avrg)
         th0 = M[m].theta0[common]
-        param_indx = np.ones((np.sum(common),), dtype = int) * -1 # Keep track of what subject the parameter belongs to
+
+        # Keep track of what subject the parameter belongs to
+        param_indx = np.ones((np.sum(common),)) * -1 
         for s in range(n_subj):
             th0 = np.concatenate((th0,M[m].theta0[not_common]))
-            param_indx = np.concatenate(param_indx,s * np.ones((np.sum(not_common),)))
+            param_indx = np.concatenate((param_indx,s * np.ones((n_modsu,))))
 
             if (fit_scale):
-                indx_scale[s]=th0.shape[0]
                 G0,_ = M[m].predict(M[m].theta0)
                 scale0 = get_scale0(G0, G_hat[s])
                 th0 = np.concatenate((th0,scale0))
-                param_indx = np.concatenate(param_indx,s)
+                param_indx = np.concatenate((param_indx,np.ones((1,)) * s))
 
-            indx_noise[s]=th0.shape[0]
             th0 = np.concatenate((th0,Noise[s].theta0))
-            param_indx = np.concatenate(param_indx,np.ones((Noise[s].n_param,)))
+            param_indx = np.concatenate((param_indx, s * np.ones((Noise[s].n_param,))))
             if (theta0 is not None) and (len(theta0) >= m-1):
                 th0 = theta0[m]
+        
+        # Initialize parameter array for group
+        theta[m] = np.zeros((th0.shape[0],n_subj))
 
         # Loop over subjects can fit the rest to get group parameters
         for s in range(n_subj):
             notS = np.arange(n_subj) != s # Get indices of training group
-            np.logical_not(param_indx == s)
+            pNotS = param_indx != s
             # Set theta0 and model (for direct estimation)
             G_avrg = sum(G_hat[notS], axis=0) / n_subj
             M[m].set_theta0(G_avrg)
 
             #  Now do the fitting, using the preferred optimization routine
             if (M[m].algorithm=='newton'):
-                fcn = lambda x: likelihood_group(x, M[m], YY[notS], Z[notS], X=X[notS],
-                    Noise = Noise[notS], fit_scale = fit_scale, return_deriv = 2,
-                    n_channel=n_channel[notS], scale_prior=scale_prior)
-                theta, l, INFO = pcm.optimize.newton(th0[], fcn, **optim_param)
+                fcn = lambda x: likelihood_group(x, M[m], YY[notS], Z[notS], 
+                                            X=X[notS], Noise = Noise[notS], fit_scale = fit_scale, return_deriv = 2, n_channel=n_channel[notS], scale_prior=scale_prior)
+                theta[m][:,s], l, INFO = pcm.optimize.newton(th0, fcn, **optim_param)
             else:
                 raise(NameError('not implemented yet'))
-            th0 = M[m].theta0[common]
 
             # Evaluate likelihood on the left-out subject
             if hasattr(M[m],'common_param'):
                 raise(NameError('Group crossval with subject specific params not implemented yet'))
             else:
-                thm = th[param_indx==-1] # Common model parameter
-                G_hat, _ = M[m].predict(thm) # Predicted second moment matrix
-                Mindiv = pcm.ModelFixed(G_hat) # Make a fixed model
-                fcn = lambda x: likelihood_individ(theta[param_indx == s], Mindiv, YY[s], Z[s], X=X[s],
-                            Noise = Noise[s], fit_scale = fit_scale, return_deriv = 2,n_channel=n_channel[s])
-                thi, l, INF2 = pcm.optimize.newton(th0[param_indx != s], fcn, **optim_param)
-                theta[m][:,s] = np.concatenate(thm,thi) # Put the parameters together for individ likelihood
+                thm = theta[m][param_indx==-1, s] # Common model parameter
+                G_group, _ = M[m].predict(thm) # Predicted second moment matrix
+                Mindiv = pcm.ModelFixed('name',G_group) # Make a fixed model
+                p = param_indx == s # Parameters for this subject
+                fcn = lambda x: likelihood_individ(x, Mindiv, YY[s], Z[s],
+                X=X[s], Noise = Noise[s], n_channel=n_channel[s],
+                fit_scale = fit_scale, return_deriv = 2)
+                thi, l, INF2 = pcm.optimize.newton(th0[p], fcn, **optim_param)
+            # record results into the array
             T.loc[:,('likelihood',m)][s] = l
-            # if (fit_scale):
-            #     T.loc[:,('scale',m)] = exp(theta[m][indx_scale,s])
-            # T.loc[:,('noise',m)] = exp(theta[m][indx_noise])
+            if (fit_scale):
+                T.loc[:,('scale',m)][s] = exp(thi[0])
+            T.loc[:,('noise',m)][s] = exp(thi[int(fit_scale)])
     return [T,theta]
 
 def set_up_fit(Data, run_effect = 'none', noise_cov = None):
@@ -664,29 +674,28 @@ def set_up_fit_group(Data, run_effect = 'none', noise_cov = None):
             List of noise covariances for the different data sets
     RETURNS
         Z
-            List of design matrix for random effects
+            np.array of design matrices for random effects
         X
-            List of design matrix for fixed effects
+            np.array of design matrices for fixed effects
         YY
-            List of quadratic form of the data (Y Y')
+            np.array of quadratic forms of the data (Y Y')
         Noise
             List of noise model
         G_hat
             List of crossvalidated estimate of second moment of U
     """
     n_subj = len(Data)
-    Z = [None]*n_subj
-    X = [None]*n_subj
-    YY = [None]*n_subj
-    n_channel = [None]*n_subj
-    G_hat = [None]*n_subj
-    Noise = [None]*n_subj
-    indx_scale = [None]*n_subj
-    indx_noise = [None]*n_subj
+    Z = np.empty((n_subj,),dtype=object)
+    X = np.empty((n_subj,),dtype=object)
+    YY = np.empty((n_subj,),dtype=object)
+    n_channel = np.zeros((n_subj,),dtype=int)
+    G_hat = np.empty((n_subj,),dtype=object)
+    Noise = np.empty((n_subj,),dtype=object)
     if noise_cov is None:
-        noise_cov = [None]*n_subj
+        noise_cov = np.empty((n_subj,),dtype=object)
     for s in range(n_subj):
         Z[s], X[s], YY[s], n_channel[s], Noise[s], G_hat[s] = pcm.inference.set_up_fit(Data[s],run_effect = run_effect,noise_cov = noise_cov[s])
+    return Z, X ,YY, n_channel, Noise, G_hat
 
 def get_scale0(G,G_hat):
     """"

@@ -1,23 +1,15 @@
 .. _model:
 
 Model module
-============
-This is default documentation for PCM. 
+=============
+Module that defines PCM Model classes and NoiseModel classes
 
-Model Class
------------
-.. automodule:: model
-   :members: Model
-
-Component Model
----------------
-.. automodule:: model
-   :members: ModelComponent
-
-Feature Model
+Model Classes
 -------------
 .. automodule:: model
-   :members: ModelFeature
+   :members: Model, ModelFixed, ModelComponent, ModelFeature
 
-
-
+Noise Model Classes
+-------------------
+.. automodule:: model
+   :members: NoiseModel, IndependentNoise, BlockPlusIndepNoise

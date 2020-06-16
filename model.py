@@ -79,7 +79,7 @@ class ModelComponent(Model):
             Model object
         """
         Model.__init__(self,name)
-        if type(Gc) is list: 
+        if type(Gc) is list:
             Gc = np.stack(Gc,axis=0)
         if (Gc.ndim <3):
             Gc = Gc.reshape((1,)+Gc.shape)
@@ -110,22 +110,21 @@ class ModelComponent(Model):
 
         Parameters:
             G_hat (numpy.ndarray)
-                Crossvalidated estimate of G 
+                Crossvalidated estimate of G
         """
         if self.n_param==0:
             self.theta0 = np.zeros((0,))
         else:
             X = np.zeros((G_hat.shape[0]**2, self.n_param))
             for i in range(self.n_param):
-                X[:,i] = self.Gc[i,:,:].reshape((-1,)) 
-            h0 = pinv(X) @ G_hat.reshape((-1,1)) 
-            h0[h0<10e-4] = 10e-4 
+                X[:,i] = self.Gc[i,:,:].reshape((-1,))
+            h0 = pinv(X) @ G_hat.reshape((-1,1))
+            h0[h0<10e-4] = 10e-4
             self.theta0 = log(h0.reshape(-1,))
 
 class ModelFixed(Model):
     """
-    Fixed PCM with a rigid predicted G matrix and no parameters:
-    Use for Null-models
+    Fixed PCM with a rigid predicted G matrix and no parameters
     """
     def __init__(self,name,G):
         """

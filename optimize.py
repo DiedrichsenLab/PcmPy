@@ -1,7 +1,5 @@
 """
 Optimization module for PCM toolbox with main functionality for model fitting.
-    newton
-        Newton-Raphson like method with automatic regularization of the second derivative
 @author: jdiedrichsen
 """
 

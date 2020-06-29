@@ -18,6 +18,7 @@ Note that the toolbox does not provide functions to extract the required data fr
    sim.rst
    math.rst
    reference.rst
+   literature_cited.rst
 
 Indices and tables
 ==================

@@ -14,3 +14,18 @@ model.append(pcm.ModelFixed('Muscle',X['Model'][0,0][1]))
 model.append(pcm.ModelFixed('Naturalstats',X['Model'][0,1][1]))
 
 pickle.dump([Y,model],open('data_finger7T.p','wb'))
+
+# Make a simple numpy dump 
+Data = list()
+cond_vec = list()
+part_vec = list()
+modelm = list()
+
+for i in range(7):
+    Data.append(X['Y'][0,i])
+    cond_vec.append(X['condVec'][0,i].reshape(-1))
+    part_vec.append(X['partVec'][0,i].reshape(-1))
+
+modelm.append(X['Model'][0,0][1])
+modelm.append(X['Model'][0,1][1])
+pickle.dump([Data,cond_vec,part_vec,modelm],open('data_demo_finger7T.p','wb'))

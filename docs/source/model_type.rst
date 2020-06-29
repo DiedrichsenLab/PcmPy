@@ -2,19 +2,19 @@
 
 Model types
 ===========
-Independently of whether you choose a Encoding- or RSA-style approach to arrive at the final model, the PCM toolbox distinguishes between a number of different model types.  
+Independently of whether you choose an Encoding- or RSA-style approach to building your model, the PCM toolbox distinguishes between a number of different model types, each of which has an own model class.
 
 Fixed models
 ------------
 In fixed models, the second moment matrix :math:`\mathbf{G}` is exactly predicted by the model. The simplest and most common example is the Null model, which states that :math:`\mathbf{G} = \mathbf{0}`. This is equivalent to assuming that there is no difference between the activity patterns measured under any of the conditions. The Null-model is useful if we want to test whether there are any differences between experimental conditions.
 
-Fixed models also occur when the representational structure can be predicted from some independent data. An example for this is shown in the following example, where we predict the structure of finger representations directly from the correlational structure of finger movements in every-day life [@RN3415]. Importantly, fixed models only predict the the second moment matrix up to a proportional constant. The width of the distribution will vary with the overall signal-to-noise-level (assuming we use pre-whitened data). Thus, when evaluating fixed models we allow the predicted second moment matrix to be scaled by an arbitrary positive constant.
+Fixed models also occur when the representational structure can be predicted from some independent data. An example for this is shown in the following example, where we predict the structure of finger representations directly from the correlational structure of finger movements in every-day life (Ejaz et al., 2015). Importantly, fixed models only predict the the second moment matrix up to a proportional constant. The width of the distribution will vary with the overall scale or signal-to-noise-level. Thus, when evaluating fixed models we usually allow the predicted second moment matrix to be scaled by an arbitrary positive constant (see :ref:`fitting`).
 
 Example
 ^^^^^^^
 An empirical example to for a fixed representational model comes from Ejaz et al (2015). Here the representational structure of 5 finger movements was compared to the representational structure predicted by the way the muscles are activated during finger movements (Muscle model), or by the covariance structure of natural movements of the 5 fingers. That is the predicted second moment matrix is derived from data completely independent of our imaging data.
 
-Models are stored in structures, with the field `type` indicating the model type. To define a fixed model, we simple need to load the predicted second moment matrix and define a model structure as follows (see `pcm_recipe_finger`): 
+Models are a specific class, inherited from the . To define a fixed model, we simple need to load the predicted second moment matrix and define a model structure as follows (see ``demos/recipe_finger``): 
 
 .. sourcecode:: python
 

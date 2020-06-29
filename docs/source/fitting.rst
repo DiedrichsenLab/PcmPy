@@ -1,3 +1,5 @@
+.. _fitting:
+
 Model Fitting
 =============
 Details of the different optimization routines that maximize the likelihood can be found in section on Mathematical and Algorithmic details. Currently, the toolbox either uses `minimize` (conjugate gradient descent) or `pcm_NR` (Newton-Raphson). Newton-Raphson can be substantially faster in cases in which there are relatively few free parameters.  The optimisation routine can be set for each model seperately by setting the field `M.fitAlgorithm`. 

@@ -9,3 +9,4 @@ Models Specification
    model_statistical.rst
    model_rsa_encoding.rst
    model_type.rst
+   model_noise.rst

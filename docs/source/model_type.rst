@@ -6,7 +6,7 @@ Independently of whether you choose an Encoding- or RSA-style approach to buildi
 
 Fixed models
 ------------
-In fixed models, the second moment matrix :math:`\mathbf{G}` is exactly predicted by the model. The simplest and most common example is the Null model, which states that :math:`\mathbf{G} = \mathbf{0}`. This is equivalent to assuming that there is no difference between the activity patterns measured under any of the conditions. The Null-model is useful if we want to test whether there are any differences between experimental conditions.
+In fixed models, the second moment matrix :math:`\mathbf{G}` is exactly predicted by the model. The most common example is the Null model  :math:`\mathbf{G} = \mathbf{0}`. This is equivalent to assuming that there is no difference between any of the activity patterns. The Null-model is useful if we want to test whether there are any differences between experimental conditions. An alternative Null model would be :math:`\mathbf{G} = \mathbf{0}`, i.e. to assume that all conditions are equally far away from each other.
 
 Fixed models also occur when the representational structure can be predicted from some independent data. An example for this is shown in the following example, where we predict the structure of finger representations directly from the correlational structure of finger movements in every-day life (Ejaz et al., 2015). Importantly, fixed models only predict the the second moment matrix up to a proportional constant. The width of the distribution will vary with the overall scale or signal-to-noise-level. Thus, when evaluating fixed models we usually allow the predicted second moment matrix to be scaled by an arbitrary positive constant (see :ref:`fitting`).
 
@@ -14,21 +14,21 @@ Example
 ^^^^^^^
 An empirical example to for a fixed representational model comes from Ejaz et al (2015). Here the representational structure of 5 finger movements was compared to the representational structure predicted by the way the muscles are activated during finger movements (Muscle model), or by the covariance structure of natural movements of the 5 fingers. That is the predicted second moment matrix is derived from data completely independent of our imaging data.
 
-Models are a specific class, inherited from the . To define a fixed model, we simple need to load the predicted second moment matrix and define a model structure as follows (see ``demos/recipe_finger``): 
+Models are a specific class, inherited from the class ``Model``. To define a fixed model, we simple need to load the predicted second moment matrix and define a model structure as follows (see ``demos/recipe_finger``): 
 
 .. sourcecode:: python
 
-    M.numGparams = 0; % Number of parameters
-    M.Gc = Model(1).G_cent; % This is the predicted second moment matrix from the behavioural data
-    M.name = 'muscle’;% This is the name of the
+    M1 = pcm.ModelFixed('null',np.eye(5))    # Makes a Null model  
+    M2 = pcm.ModelFixed('muscle',modelM[0])  # Makes the muscle model
+    M3 = pcm.ModelFixed('natural',modelM[1]) # Makes the natural stats model
+    M = [M1,M2] # Join the models for fitting in list
 
 When evaluating the likelihood of a data set under the prediction, the pcm toolbox still needs to estimate the scaling factor and the noise variance, so even in the case of fixed models, an iterative maximization of the likelihood is required (see below).
 
 Component models
 ----------------
 
-A more flexible model is to express the second moment matrix as a linear combination of different components. For example, the representational structure of activity patterns in the human object recognition system in inferior temporal cortex can be compared to the response of a convolutional neural network that is shown the same stimuli [@RN3544]. Each layer of the network predicts a specific structure of the second moment matrix and therefore constitutes a fixed model. However, the real representational structure seems to be best described by a mixture of multiple layers. In this case, the overall predicted second moment matrix is a linear sum of the weighted components matrices:
-
+A more flexible model is to express the second moment matrix as a linear combination of different components. For example, the representational structure of activity patterns in the human object recognition system in inferior temporal cortex can be compared to the response of a convolutional neural network that is shown the same stimuli (Khaligh-Razavi & Kriegeskorte, 2014). Each layer of the network predicts a specific structure of the second moment matrix and therefore constitutes a fixed model. However, the representational structure may be best described by a mixture of multiple layers. In this case, the overall predicted second moment matrix is a linear sum of the weighted components matrices:
 
 .. math::
     \mathbf{G}= \sum_{h}{\exp(\theta_{h})\mathbf{G}_{h}}
@@ -48,11 +48,7 @@ In the example `pcm_recipe_finger`, we have two fixed models, the Muscle and the
 
 .. sourcecode:: python
 
-    M.type = ‘component’;
-    M.numGparams = 2;
-    M.Gc(:,:,1) = Model(1).G_cent;
-    M.Gc(:,:,2) = Model(2).G_cent;
-    M.name = 'muscle + usage';
+    MC = pcm.ModelComponent('muscle+nat',[modelM[0],modelM[1]])
 
 Feature models
 --------------
@@ -98,7 +94,7 @@ There two features to simulate the common pattern for the left and right hand mo
 Nonlinear models
 ----------------
 
-The most flexible way of defining a representational model is to express the second moment matrix as a non-linear (matrix valued) function of the parameters, :math:`\mathbf{G}=F\left(\theta\right)`. While often a representational model can be expressed as a component or feature model, sometimes this is not possible. One example is a representational model in which the width of the tuning curve (or the width of the population receptive field) is a free parameter [@RN3558]. Such parameters would influence the features, and hence also the second-moment matrix in a non-linear way. Computationally, such non-linear models are not much more difficult to estimate than component or feature models, assuming that one can analytically derive the matrix derivatives :math:`\partial \mathbf{G} / \partial \theta_{h}`. 
+The most flexible way of defining a representational model is to express the second moment matrix as a non-linear (matrix valued) function of the parameters, :math:`\mathbf{G}=F\left(\theta\right)`. While often a representational model can be expressed as a component or feature model, sometimes this is not possible. One example is a representational model in which the width of the tuning curve (or the width of the population receptive field) is a free parameter. Such parameters would influence the features, and hence also the second-moment matrix in a non-linear way. Computationally, such non-linear models are not much more difficult to estimate than component or feature models, assuming that one can analytically derive the matrix derivatives :math:`\partial \mathbf{G} / \partial \theta_{h}`. 
 
 For this, the user needs to define a function that takes the parameters as an input and returns **G** the partial derivatives of **G** in respect to each of these parameters. The derivates are returned as a (KxKxH) tensor, where H is the number of parameters. 
 
@@ -178,7 +174,7 @@ Free models
 -----------
 The most flexible representational model is the free model, in which the predicted second moment matrix is unconstrained. Thus, when we estimate this model, we would simply derive the maximum-likelihood estimate of the second-moment matrix. This can be useful for a number of reasons. First, we may want an estimate of the second moment matrix to derive the corrected correlation between different patterns, which is less influenced by noise than the simple correlation estimate [@RN3638; @RN3033]. Furthermore, we may want to estimate the likelihood of the data under a free model to obtain a noise ceiling - i.e.\ an estimate of how well the best model should fit the data (see section Noise Ceilings).
 
-In estimating an unconstrained :math:`\mathbf{G}`, it is important to ensure that the estimate will still be a positive definite matrix. For this purpose, we express the second moment as the square of an upper-triangular matrix, :math:`\mathbf{G} = \mathbf{AA}^{T}` [@RN3638; @RN3033]. The parameters are then simply all the upper-triangular entries of :math:`\mathbf{A}`.
+In estimating an unconstrained :math:`\mathbf{G}`, it is important to ensure that the estimate will still be a positive definite matrix. For this purpose, we express the second moment as the square of an upper-triangular matrix, :math:`\mathbf{G} = \mathbf{AA}^{T}` (Diedrichsen et al., 2011; Cai et al., 2016). The parameters are then simply all the upper-triangular entries of :math:`\mathbf{A}`.
 
 Example
 ^^^^^^^

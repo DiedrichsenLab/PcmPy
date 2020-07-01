@@ -9,6 +9,7 @@ Collection of different utility functions
 import numpy as np
 import PcmPy as pcm
 from scipy.linalg import solve, pinv
+from numpy.linalg import eigh
 
 def est_G_crossval(Y, Z, part_vec, X=None, S=None):
     """
@@ -20,9 +21,8 @@ def est_G_crossval(Y, Z, part_vec, X=None, S=None):
         Y (numpy.ndarray):
             Activity data
         Z (numpy.ndarray):
-            Design matrix for eximation of U)
-            should the function ignore zero negative entries
-            in the index_vector? Default: false
+            2-d: Design matrix for conditions / features U
+            1-d: condition vector 
         part_vec (numpy.ndarray):
             Vector indicating the partition number
         X (numpy.ndarray):
@@ -31,13 +31,20 @@ def est_G_crossval(Y, Z, part_vec, X=None, S=None):
     Returns:
         G_hat (numpy.ndarray):
             n_cond x n_cond matrix
+        Sig (numpy.ndarray): 
+
     """
 
     N , n_channel = Y.shape
     part = np.unique(part_vec)
     n_part = part.shape[0]
+
+    # Make Z into a design matrix 
+    if Z.ndim == 1:
+        Z = pcm.matrix.indicator(Z)
     n_cond = Z.shape[1]
 
+    # Allocate memory 
     A = np.zeros((n_part,n_cond,n_channel)) # Allocate memory
     Bp = np.zeros((n_cond,n_channel))
     G = np.zeros((n_part,n_cond,n_cond)) # Allocate memory
@@ -73,3 +80,24 @@ def est_G_crossval(Y, Z, part_vec, X=None, S=None):
         Sig[i,:,:] = R[i,:,:] @ R[i,:,:].T / n_channel
     Sig = np.sum(Sig, axis=0) / (n_part-1)
     return [G, Sig]
+
+def make_pd(G,thresh = 1e-10):
+    """
+    Enforces that G is semi-positive definite by setting small eigenvalues to minimal value
+
+    Parameters:
+        G   (square 2d-np.array)
+            estimated KxK second momement matrix 
+        thresh (float)v
+            threshold for increasing small eigenvalues 
+    Returns:
+        Gpd (square 2d-np.array)
+            semi-positive definite version of G
+
+    """
+
+    G = (G + G.T) / 2 # Symmetrize
+    Glam, V = eigh(G)
+    Glam[Glam < thresh] = thresh # rectify small eigenvalues 
+    G_pd = V @ np.diag(Glam) @ V.T
+    return G_pd

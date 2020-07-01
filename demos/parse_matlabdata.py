@@ -26,6 +26,6 @@ for i in range(7):
     cond_vec.append(X['condVec'][0,i].reshape(-1))
     part_vec.append(X['partVec'][0,i].reshape(-1))
 
-modelm.append(X['Model'][0,0][1])
-modelm.append(X['Model'][0,1][1])
+modelm.append(X['Model'][0,0][2])
+modelm.append(X['Model'][0,1][2])
 pickle.dump([Data,cond_vec,part_vec,modelm],open('data_demo_finger7T.p','wb'))

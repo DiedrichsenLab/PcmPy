@@ -3,6 +3,7 @@ from PcmPy.model import Model
 from PcmPy.model import ModelComponent
 from PcmPy.model import ModelFeature
 from PcmPy.model import ModelFixed
+from PcmPy.model import ModelFree
 from PcmPy.dataset import Dataset
 from PcmPy.sim import make_design
 from PcmPy.sim import make_dataset

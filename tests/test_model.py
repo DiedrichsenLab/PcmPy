@@ -29,6 +29,12 @@ class TestModel(unittest.TestCase):
         G, dG = M.predict(theta)
         self.assertEqual(G[2,2],np.exp(2))
         
-        
+    def test_model_free(self):
+        A = np.eye(4)
+        M = pcm.ModelFree('ceil',4)
+        M.set_theta0(A)
+        [G,dG] = M.predict(M.theta0)
+        self.assertTrue(np.all((G-A)<1e-8))
+
 if __name__ == '__main__':
     unittest.main()

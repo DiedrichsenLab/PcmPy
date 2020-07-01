@@ -13,7 +13,7 @@ import pandas as pd
 
 def likelihood_individ(theta, M, YY, Z, X=None,
                        Noise=model.IndependentNoise(),
-                       n_channel=1, fit_scale=False, return_deriv=0):
+                       n_channel=1, fit_scale=False, scale_prior = 1e3, return_deriv=0):
     """
     Negative Log-Likelihood of the data and derivative in respect to the parameters
 
@@ -34,10 +34,13 @@ def likelihood_individ(theta, M, YY, Z, X=None,
             Number of channels
         fit_scale (bool)
             Fit a scaling parameter for the model (default is False)
+        scale_prior (float):
+            Prior variance for log-normal prior on scale parameter
         return_deriv (int)
             0: Only return negative loglikelihood
             1: Return first derivative
             2: Return first and second derivative (default)
+
     Returns:
         negloglike:
             Negative log-likelihood of the data under a model
@@ -58,6 +61,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
     # Get the scale parameter and scale G by it
     if fit_scale:
         scale_param = theta[M.n_param]
+        indx_scale = M.n_param # Index of scale parameter
     else:
         scale_param = 0
     Gs = G * exp(scale_param)
@@ -65,13 +69,12 @@ def likelihood_individ(theta, M, YY, Z, X=None,
     # Get the noise model parameters
     noise_params = theta[M.n_param+fit_scale:]
 
-
     # Apply the matrix inversion lemma. The following statement is the same as
     # V   = (Z*Gs*Z' + S(noiseParam));
     # iV  = pinv(V);
     Gs = (Gs + Gs.T) / 2 # Symmetrize
     Glambda, GU = eigh(Gs)
-    idx = Glambda > (10e-10) # Increased to 10*eps from 2*eps
+    idx = Glambda > (10e-10) # Find small eigenvalues 
     Zu = Z @ GU[:, idx]
     iS = Noise.inverse(noise_params)
     if type(iS) is np.float64:
@@ -92,7 +95,9 @@ def likelihood_individ(theta, M, YY, Z, X=None,
     llik = -n_channel / 2 * ldet - 0.5 * einsum('ij,ij->',iVr, YY)
     if X is not None:
         # P/2 log(det(X'V^-1*X))
-        llik = llik - n_channel * sum(log(diag(cholesky(X.T @ iV @X)))) #
+        llik -= n_channel * sum(log(diag(cholesky(X.T @ iV @X)))) #
+    if fit_scale:
+        llik -= scale_param**2 / (2 * scale_prior) # Add prior
 
     # If no derivative - exit here
     if return_deriv == 0:
@@ -123,6 +128,8 @@ def likelihood_individ(theta, M, YY, Z, X=None,
     dLdtheta = np.zeros((n_param,))
     for i in range(n_param):
         dLdtheta[i] = -n_channel / 2 * trace(iVdV[i]) + 0.5 * einsum('ij,ij->',iVdV[i], B)
+    if fit_scale: 
+        dLdtheta[indx_scale] -= scale_param / scale_prior
 
     # If only first derivative, exit here
     if return_deriv == 1:
@@ -134,6 +141,9 @@ def likelihood_individ(theta, M, YY, Z, X=None,
         for j in range(i, n_param):
             d2L[i, j] = -n_channel / 2 * einsum('ij,ij->',iVdV[i],iVdV[j])
             d2L[j, i] = d2L[i, j]
+    if fit_scale: 
+        d2L[indx_scale, indx_scale] -= 1 / scale_prior
+
     if return_deriv == 2:
         return (-llik, -dLdtheta, -d2L)
     else:
@@ -226,18 +236,14 @@ def likelihood_group(theta, M, YY, Z, X=None,
         ths = theta[indx]
         # Get individual likelihood
         res = likelihood_individ(ths, M, YY[s], Z[s], X[s],
-                       Noise[s], n_channel[s], True, return_deriv = return_deriv)
+                       Noise[s], n_channel[s], fit_scale = fit_scale, scale_prior = scale_prior, return_deriv = return_deriv)
         iS = indx_scale[0,s]
-        scale_param = theta[iS]
         nl[s] = res[0]
-        nl[s] += scale_param**2 / (2 * scale_prior) # Add prior
         if return_deriv>0:
             dFdh[s, indx] = res[1]
-            dFdh[s, iS] += scale_param / scale_prior
         if return_deriv==2:
             ixgrid = np.ix_([s],indx,indx)
             dFdhh[ixgrid] = res[2]
-            dFdhh[s, iS, iS] += 1 / scale_prior
 
     # Integrate over subjects
     if return_individ:
@@ -251,8 +257,7 @@ def likelihood_group(theta, M, YY, Z, X=None,
     return ra
 
 def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
-                    noise_cov=None, algorithm=None, optim_param={},
-                    theta0=None):
+                    scale_prior = 1e3, noise_cov=None, algorithm=None, optim_param={}, theta0=None):
     """
     Fits pattern component model(s) specified by M to data from a number of
     subjects.The model parameters are all individually fit.
@@ -270,6 +275,8 @@ def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
             'none': No modeling of the run Effect
         fit_scale (bool):
             Fit a additional scale parameter for each subject? Default is set to False.
+        scale_prior (float):
+            Prior variance for log-normal prior on scale parameter
         algorithm (string):
             Either 'newton' or 'minimize' - provides over-write for model specific algorithms
         noise_cov:
@@ -309,8 +316,13 @@ def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
         n_model = 1
         M = [M]
 
+ # Get model names 
+    m_names = []
+    for m in range(n_model):
+        m_names.append(M[m].name)
+
     # Preallocate output structures
-    iterab = [['likelihood','noise','iterations'],range(n_model)]
+    iterab = [['likelihood','noise','iterations'],m_names]
     index = pd.MultiIndex.from_product(iterab, names=['variable', 'model'])
     T = pd.DataFrame(np.zeros((n_subj, n_model * 3)), columns=index)
     theta = [None] * n_model
@@ -330,8 +342,9 @@ def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
                 M[m].set_theta0(G_hat)
                 th0 = M[m].theta0
                 if (fit_scale):
-                    scale0 = get_scale0(M[m].predict(M[m].theta0),G_hat)
-                    np.concatenate(th0,scale0)
+                    G_pred, _ = M[m].predict(M[m].theta0)
+                    scale0 = get_scale0(G_pred, G_hat)
+                    th0 = np.concatenate((th0,scale0))
                 th0 = np.concatenate((th0,Noise.theta0))
             else:
                 th0 = theta0[m][:,s]
@@ -339,7 +352,7 @@ def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
             #  Now do the fitting, using the preferred optimization routine
             if (M[m].algorithm=='newton'):
                 fcn = lambda x: likelihood_individ(x, M[m], YY, Z, X=X,
-                                Noise = Noise, fit_scale = fit_scale, return_deriv = 2,n_channel=n_channel)
+                                Noise = Noise, fit_scale = fit_scale, scale_prior = scale_prior, return_deriv = 2,n_channel=n_channel)
                 th, l, INFO = pcm.optimize.newton(th0, fcn, **optim_param)
             else:
                 raise(NameError('not implemented yet'))
@@ -347,21 +360,15 @@ def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
             if theta[m] is None:
                 theta[m] = np.zeros((th.shape[0],n_subj))
             theta[m][:,s] = th
-            T.loc[s,('likelihood',m)] = l
-            T.loc[s,('iterations',m)] = INFO['iter']+1
-            T.loc[s,('noise',m)] = exp(th[-Noise.n_param])
-
-            # G_pred[m](:,:,s)  =  pcm_calculateG(M{m},theta_hat{m}(1:M{m}.numGparams,s));
-            # T.noise(s,m)      =  exp(theta_hat{m}(M{m}.numGparams+1,s));
-            # if (fitScale)
-            #     T.scale(s,m)      = exp(theta_hat{m}(M{m}.numGparams+2,s));
-            # end
-
-            # T.time(s,m)       = toc;
+            T.loc[s,('likelihood',m_names[m])] = l
+            T.loc[s,('iterations',m_names[m])] = INFO['iter']+1
+            T.loc[s,('noise',m_names[m])] = exp(th[-Noise.n_param])
+            if fit_scale:
+                T.loc[s,('scale',m_names[m])] = exp(th[M[m].n_param])
     return [T,theta]
 
 def fit_model_group(Data, M, run_effect='fixed', fit_scale=False,
-                    scale_prior = 10, noise_cov=None, algorithm=None, optim_param={}, theta0=None):
+                    scale_prior = 1e3, noise_cov=None, algorithm=None, optim_param={}, theta0=None):
     """
     Fits pattern component model(s) specified by M to a group of subjects
     The model parameters are (by default) shared across subjects.
@@ -381,6 +388,8 @@ def fit_model_group(Data, M, run_effect='fixed', fit_scale=False,
             'none': No modeling of the run Effect
         fit_scale (bool):
             Fit a additional scale parameter for each subject? Default is set to False.
+        scale_prior (float):
+            Prior variance for log-normal prior on scale parameter
         algorithm (string):
             Either 'newton' or 'minimize' - provides over-write for model specific algorithms
         noise_cov:
@@ -419,10 +428,15 @@ def fit_model_group(Data, M, run_effect='fixed', fit_scale=False,
         n_model = 1
         M = [M]
 
+   # Get model names 
+    m_names = []
+    for m in range(n_model):
+        m_names.append(M[m].name)
+
     # Preallocate output structures
-    iterab = [['likelihood','noise','iterations'],range(n_model)]
+    iterab = [['likelihood','noise','scale','iterations'],m_names]
     index = pd.MultiIndex.from_product(iterab, names=['variable', 'model'])
-    T = pd.DataFrame(np.zeros((n_subj, n_model * 3)), columns=index)
+    T = pd.DataFrame(np.zeros((n_subj, n_model * 4)), columns=index)
     theta = [None] * n_model
 
     # Determine optimal algorithm for each of the models
@@ -462,22 +476,22 @@ def fit_model_group(Data, M, run_effect='fixed', fit_scale=False,
         #  Now do the fitting, using the preferred optimization routine
         if (M[m].algorithm=='newton'):
             fcn = lambda x: likelihood_group(x, M[m], YY, Z, X=X,
-                Noise = Noise, fit_scale = fit_scale, return_deriv = 2,n_channel=n_channel, scale_prior=scale_prior)
+                Noise = Noise, fit_scale = fit_scale, scale_prior=scale_prior, return_deriv = 2,n_channel=n_channel)
             theta[m], l, INFO = pcm.optimize.newton(th0, fcn, **optim_param)
         else:
             raise(NameError('not implemented yet'))
 
         res = likelihood_group(theta[m], M[m], YY, Z, X=X,
-                Noise = Noise, fit_scale = fit_scale, return_deriv = 0,return_individ=True, n_channel=n_channel)
-        T.loc[:,('likelihood',m)] = -res[0]
-        T.loc[:,('iterations',m)] = INFO['iter']+1
-        T.loc[:,('noise',m)] = exp(theta[m][indx_noise])
+                Noise = Noise, fit_scale = fit_scale, scale_prior=scale_prior,return_deriv = 0,return_individ=True, n_channel=n_channel)
+        T['likelihood',m_names[m]] = -res[0]
+        T['iterations',m_names[m]] = INFO['iter']+1
+        T['noise',m_names[m]] = exp(theta[m][indx_noise])
         if (fit_scale):
-            T.loc[:,('scale',m)] = exp(theta[m][indx_scale])
+            T['scale',m_names[m]] = exp(theta[m][indx_scale])
     return [T,theta]
 
 def fit_model_group_crossval(Data, M, run_effect='fixed', fit_scale=False,
-                    scale_prior = 10, noise_cov=None, algorithm=None, optim_param={}, theta0=None):
+                    scale_prior = 1e3, noise_cov=None, algorithm=None, optim_param={}, theta0=None):
     """
     Fits pattern component model(s) specified by M to N-1 subjects and evaluates the likelihood on the Nth subject. Only the common model parameters are shared across subjects.The scale and noise parameters
     are still fitted to each subject. Some model parameters can also be made individual by setting M.common_param
@@ -495,6 +509,8 @@ def fit_model_group_crossval(Data, M, run_effect='fixed', fit_scale=False,
             'none': No modeling of the run Effect
         fit_scale (bool):
             Fit a additional scale parameter for each subject? Default is set to False.
+        scale_prior (float):
+            Prior variance for log-normal prior on scale parameter
         algorithm (string):
             Either 'newton' or 'minimize' - provides over-write for model specific algorithms
         noise_cov:
@@ -533,8 +549,13 @@ def fit_model_group_crossval(Data, M, run_effect='fixed', fit_scale=False,
         n_model = 1
         M = [M]
 
+    # Get model names 
+    m_names = []
+    for m in range(n_model):
+        m_names.append(M[m].name)
+
     # Preallocate output structures
-    iterab = [['likelihood','noise','scale'],range(n_model)]
+    iterab = [['likelihood','noise','scale'],m_names]
     index = pd.MultiIndex.from_product(iterab, names=['variable', 'model'])
     T = pd.DataFrame(np.zeros((n_subj, n_model * 3)), columns=index)
     theta = [None] * n_model
@@ -589,7 +610,7 @@ def fit_model_group_crossval(Data, M, run_effect='fixed', fit_scale=False,
             #  Now do the fitting, using the preferred optimization routine
             if (M[m].algorithm=='newton'):
                 fcn = lambda x: likelihood_group(x, M[m], YY[notS], Z[notS],
-                                            X=X[notS], Noise = Noise[notS], fit_scale = fit_scale, return_deriv = 2, n_channel=n_channel[notS], scale_prior=scale_prior)
+                                            X=X[notS], Noise = Noise[notS], fit_scale = fit_scale, scale_prior = scale_prior, return_deriv = 2, n_channel=n_channel[notS])
                 theta[m][:,s], l, INFO = pcm.optimize.newton(th0, fcn, **optim_param)
             else:
                 raise(NameError('not implemented yet'))
@@ -602,15 +623,13 @@ def fit_model_group_crossval(Data, M, run_effect='fixed', fit_scale=False,
                 G_group, _ = M[m].predict(thm) # Predicted second moment matrix
                 Mindiv = pcm.ModelFixed('name',G_group) # Make a fixed model
                 p = param_indx == s # Parameters for this subject
-                fcn = lambda x: likelihood_individ(x, Mindiv, YY[s], Z[s],
-                X=X[s], Noise = Noise[s], n_channel=n_channel[s],
-                fit_scale = fit_scale, return_deriv = 2)
+                fcn = lambda x: likelihood_individ(x, Mindiv, YY[s], Z[s], X=X[s], Noise = Noise[s], n_channel=n_channel[s], fit_scale = fit_scale, scale_prior = scale_prior, return_deriv = 2)
                 thi, l, INF2 = pcm.optimize.newton(th0[p], fcn, **optim_param)
             # record results into the array
-            T.loc[:,('likelihood',m)][s] = l
+            T['likelihood',m_names[m]][s] = l
             if (fit_scale):
-                T.loc[:,('scale',m)][s] = exp(thi[0])
-            T.loc[:,('noise',m)][s] = exp(thi[int(fit_scale)])
+                T['scale',m_names[m]][s] = exp(thi[0])
+            T['noise',m_names[m]][s] = exp(thi[int(fit_scale)])
     return [T,theta]
 
 def set_up_fit(Data, run_effect = 'none', noise_cov = None):

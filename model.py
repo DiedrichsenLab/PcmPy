@@ -11,9 +11,13 @@ class Model:
         self.name = name
         self.n_param = 0
         self.algorithm = 'newton' # Default optimization algorithm
+        self.theta0 = np.zeros((0,)) # Empty theta0
 
     def predict(self,theta):
         raise(NameError("caluclate G needs to be implemented"))
+
+    def set_theta0(self,G_hat):
+        pass
 
 class ModelFeature(Model):
     """
@@ -157,6 +161,64 @@ class ModelFixed(Model):
         """
 
         return (self.G,None)
+
+class ModelFree(Model):
+    """
+    Free model class: Second moment matrix is 
+    G = A*A', where A is a upper triangular matrix that is flexible
+    """
+    def __init__(self,name,n_cond):
+        """
+        Creator for ModelFree class
+
+        Parameters:
+            name (string)
+                name of the particular model for indentification
+            n_cond (int)
+                number of conditions for free model
+        Returns:
+            Model object
+        """
+        Model.__init__(self,name)
+        self.n_cond = n_cond
+        self.index = np.tri(n_cond)
+        self.row, self.col = np.where(self.index)
+        self.n_param = len(self.row)
+
+    def predict(self,theta):
+        """
+        Calculation of G
+
+        Args:
+            theta (numpy.ndarray):    Vector of model parameters
+        Returns:
+            G (np.ndarray)
+                2-dimensional (K,K) array of predicted second moment
+            dG_dTheta (np.ndarray)
+                3-d (n_param,K,K) array of partial matrix derivatives of G in respect to theta
+        """
+
+        A = np.zeros((self.n_cond, self.n_cond))
+        A[self.row, self.col] = theta
+        G = A @ A.T
+        dGdtheta = np.zeros((self.n_param,self.n_cond,self.n_cond))
+        for i in range (self.n_param):
+            dGdtheta[i,self.row[i],:] += A[:,self.col[i]]
+            dGdtheta[i,:,self.row[i]] += A[:,self.col[i]]
+        return (G,dGdtheta)
+
+    def set_theta0(self,G_hat):
+        """
+        Sets theta0 based on the crossvalidated second-moment
+
+        Parameters:
+            G_hat (numpy.ndarray)
+                Crossvalidated estimate of G
+        """
+        G_pd = pcm.util.make_pd(G_hat)
+        A   = cholesky(G_pd) 
+        self.theta0 = A[self.row, self.col]
+
 
 class NoiseModel:
     """

@@ -40,9 +40,10 @@ M.append(pcm.ModelFixed('null',np.eye(5)))
 M.append(pcm.ModelFixed('muscle',modelM[0]))
 M.append(pcm.ModelFixed('natural',modelM[1]))
 M.append(pcm.ModelComponent('muscle+nat',[modelM[0],modelM[1]]))
-M.append(pcm.ModelFree('Noiseceil',5))
+M.append(pcm.ModelFree('ceil',5))
 
-# T_gr, theta_in = pcm.inference.fit_model_group(Y, M, fit_scale=True)
-# T_cv, theta_in = pcm.inference.fit_model_group_crossval(Y, M, fit_scale=True)
+T_gr, theta_in = pcm.inference.fit_model_group(Y, M, fit_scale=True)
+T_cv, theta_in = pcm.inference.fit_model_group_crossval(Y, M, fit_scale=True)
 # T_in, theta_in = pcm.inference.fit_model_individ(Y, M, fit_scale=True)
 
+pcm.vis.model_plot(T_cv.likelihood,null_model = 'null',noise_ceiling = 'ceil', upper_ceiling = T_gr.likelihood['ceil'])

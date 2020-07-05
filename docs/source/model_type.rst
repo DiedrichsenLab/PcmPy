@@ -21,7 +21,7 @@ Models are a specific class, inherited from the class ``Model``. To define a fix
     M1 = pcm.ModelFixed('null',np.eye(5))    # Makes a Null model  
     M2 = pcm.ModelFixed('muscle',modelM[0])  # Makes the muscle model
     M3 = pcm.ModelFixed('natural',modelM[1]) # Makes the natural stats model
-    M = [M1,M2] # Join the models for fitting in list
+    M = [M1, M2, M3] # Join the models for fitting in list
 
 When evaluating the likelihood of a data set under the prediction, the pcm toolbox still needs to estimate the scaling factor and the noise variance, so even in the case of fixed models, an iterative maximization of the likelihood is required (see below).
 
@@ -172,19 +172,18 @@ Again, this derivative is automatically calculated by  `pcm_calculateGnonlinCorr
 
 Free models
 -----------
-The most flexible representational model is the free model, in which the predicted second moment matrix is unconstrained. Thus, when we estimate this model, we would simply derive the maximum-likelihood estimate of the second-moment matrix. This can be useful for a number of reasons. First, we may want an estimate of the second moment matrix to derive the corrected correlation between different patterns, which is less influenced by noise than the simple correlation estimate [@RN3638; @RN3033]. Furthermore, we may want to estimate the likelihood of the data under a free model to obtain a noise ceiling - i.e.\ an estimate of how well the best model should fit the data (see section Noise Ceilings).
+The most flexible representational model is the free model, in which the predicted second moment matrix is unconstrained. Thus, when we estimate this model, we would simply derive the maximum-likelihood estimate of the second-moment matrix. This model is mainly useful if we want to obtain an estimate of the maximum likelihood that could be achieved with a fully flexible model, i.e the noise ceiling (Nili et al. 20).
 
-In estimating an unconstrained :math:`\mathbf{G}`, it is important to ensure that the estimate will still be a positive definite matrix. For this purpose, we express the second moment as the square of an upper-triangular matrix, :math:`\mathbf{G} = \mathbf{AA}^{T}` (Diedrichsen et al., 2011; Cai et al., 2016). The parameters are then simply all the upper-triangular entries of :math:`\mathbf{A}`.
+In estimating an unconstrained :math:`\mathbf{G}`, it is important to ensure that the estimate will still be a positive definite matrix. For this purpose, we express the second moment as the square of an upper-triangular matrix, :math:`\mathbf{G} = \mathbf{AA}^{T}` (Diedrichsen et al., 2011; Cai et al., 2016). The parameters are then simply all the upper-triangular entries of :math:`\mathbf{A}`. 
 
 Example
 ^^^^^^^
-To set up a free model, the model type needs to be set to `freechol`, and you need to provide the number of conditions. The function `pcm_prepFreeModel` then quickly calculates the row and column indices for the different free parameters, which is a useful pre-computation for subsequent model fitting. 
+To set up a free model, simple create a new model of type ``ModelFree``.  
 
 .. sourcecode:: python
 
-    M.type       = 'freechol'; 
-    M.numCond    = 5;
-    M.name       = 'noiseceiling'; 
-    M            = pcm_prepFreeModel(M); 
+    M5 = pcm.ModelFree('ceil',n_cond)
 
-For a quick and approximate noise ceiling, you can also set the model type to `freedirect`. In the case, the fitting algorithms simply use the crossvalidated second moment to determine the parameters - basically the starting values of the complete model. This may lead to a slightly lower noise ceiling, as full optimization is avoided in the interest of speed.
+If the number of conditions is very large, the crossvalidated estimation of the noise ceiling model can get rather slow. For a quick and approximate noise ceiling, you can also set the model type to ``ModelFreeDirect``. In the case, the fitting algorithms simply uses an unbiased estimate of the second moment matrix from ``pcm.util.est_G_crossval`` to determine the parameters - basically the starting values of the complete model. This will lead to slightly lower noise ceilings as compared to the full optimization, but large improvements in speed.  
+
+

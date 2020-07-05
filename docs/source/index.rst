@@ -15,7 +15,6 @@ Note that the toolbox does not provide functions to extract the required data fr
    fitting.rst
    visualisation.rst
    inference.rst
-   sim.rst
    math.rst
    reference.rst
    literature_cited.rst

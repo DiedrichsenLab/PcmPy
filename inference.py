@@ -50,6 +50,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
             Second derivative of negloglike in respect to the parameters
 
     """
+
     N = YY.shape[0]
     Q = Z.shape[1]
     n_param = theta.shape[0]
@@ -74,7 +75,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
     # iV  = pinv(V);
     Gs = (Gs + Gs.T) / 2 # Symmetrize
     Glambda, GU = eigh(Gs)
-    idx = Glambda > (10e-10) # Find small eigenvalues 
+    idx = Glambda > (10e-10) # Find small eigenvalues
     Zu = Z @ GU[:, idx]
     iS = Noise.inverse(noise_params)
     if type(iS) is np.float64:
@@ -128,7 +129,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
     dLdtheta = np.zeros((n_param,))
     for i in range(n_param):
         dLdtheta[i] = -n_channel / 2 * trace(iVdV[i]) + 0.5 * einsum('ij,ij->',iVdV[i], B)
-    if fit_scale: 
+    if fit_scale:
         dLdtheta[indx_scale] -= scale_param / scale_prior
 
     # If only first derivative, exit here
@@ -141,7 +142,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
         for j in range(i, n_param):
             d2L[i, j] = -n_channel / 2 * einsum('ij,ij->',iVdV[i],iVdV[j])
             d2L[j, i] = d2L[i, j]
-    if fit_scale: 
+    if fit_scale:
         d2L[indx_scale, indx_scale] -= 1 / scale_prior
 
     if return_deriv == 2:
@@ -151,7 +152,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
 
 def likelihood_group(theta, M, YY, Z, X=None,
                        Noise=model.IndependentNoise(),
-                       n_channel=1, fit_scale=True, scale_prior=10,
+                       n_channel=1, fit_scale=True, scale_prior=1e3,
                        return_deriv=0,return_individ=False):
     """
     Negative Log-Likelihood of group data and derivative in respect to the parameters
@@ -316,7 +317,7 @@ def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
         n_model = 1
         M = [M]
 
- # Get model names 
+ # Get model names
     m_names = []
     for m in range(n_model):
         m_names.append(M[m].name)
@@ -428,7 +429,7 @@ def fit_model_group(Data, M, run_effect='fixed', fit_scale=False,
         n_model = 1
         M = [M]
 
-   # Get model names 
+   # Get model names
     m_names = []
     for m in range(n_model):
         m_names.append(M[m].name)
@@ -549,7 +550,7 @@ def fit_model_group_crossval(Data, M, run_effect='fixed', fit_scale=False,
         n_model = 1
         M = [M]
 
-    # Get model names 
+    # Get model names
     m_names = []
     for m in range(n_model):
         m_names.append(M[m].name)

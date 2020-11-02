@@ -1,41 +1,27 @@
 """
-Inference module for PCM toolbox with main functionality for model fitting and evaluation.
-@author: jdiedrichsen
+Regression module contains bare-bones version of  the PCM toolbox that can be used to tune ridge/Tikhonov coefficients in the context of tranditional regression models. No assumption are made about independent data partitions.
 """
 
 import numpy as np
 from numpy.linalg import solve, eigh, cholesky
 from numpy import sum, diag, log, eye, exp, trace, einsum
-from PcmPy import model
 import PcmPy as pcm
-import pandas as pd
 
-
-def likelihood_individ(theta, M, YY, Z, X=None,
-                       Noise=model.IndependentNoise(),
-                       n_channel=1, fit_scale=False, scale_prior = 1e3, return_deriv=0):
+def likelihood_1(theta, Zc, Y, X=None, Noise=model.IndependentNoise(), return_deriv=0):
     """
     Negative Log-Likelihood of the data and derivative in respect to the parameters
 
     Parameters:
         theta (np.array)
             Vector of (log-)model parameters: These include model, signal and noise parameters
-        M (pcm.Model)
-            Model object with predict function
-        YY (2d-np.array)
-            NxN Matrix of outer product of the activity data (Y*Y')
-        Z (2d-np.array)
-            NxQ Design matrix - relating the trials (N) to the random effects (Q)
+        Zc (List of model components to estimate)
+            Each one contains a 2d-no.array (Nxq_c), or a string.
+        Y  (2d-np.array)
+            NxP Matrix of data
         X (np.array)
             Fixed effects design matrix - will be accounted for by ReML
         Noise (pcm.Noisemodel)
             Pcm-noise mode to model block-effects (default: Indentity)
-        n_channel (int)
-            Number of channels
-        fit_scale (bool)
-            Fit a scaling parameter for the model (default is False)
-        scale_prior (float):
-            Prior variance for log-normal prior on scale parameter
         return_deriv (int)
             0: Only return negative loglikelihood
             1: Return first derivative
@@ -50,33 +36,19 @@ def likelihood_individ(theta, M, YY, Z, X=None,
             Second derivative of negloglike in respect to the parameters
 
     """
-
-    N = YY.shape[0]
-    Q = Z.shape[1]
+    N, num_var = Y.shape
+    num_comp = len(Zc)
     n_param = theta.shape[0]
 
-    # Get G-matrix and derivative of G-matrix in respect to parameters
-    model_params = theta[range(M.n_param)]
-    G,dGdtheta = M.predict(model_params)
+    # Sort the parameters in model and noise paramaters
+    model_params = theta[range(num_comp)]
+    noise_params = theta[num_comp:]
 
-    # Get the scale parameter and scale G by it
-    if fit_scale:
-        scale_param = theta[M.n_param]
-        indx_scale = M.n_param # Index of scale parameter
-    else:
-        scale_param = 0
-    Gs = G * exp(scale_param)
 
-    # Get the noise model parameters
-    noise_params = theta[M.n_param+fit_scale:]
-
-    # Apply the matrix inversion lemma. The following statement is the same as
-    # V   = (Z*Gs*Z' + S(noiseParam));
+    # Matrix inversion lemma. The following statement is the same as
+    # V   = (Z*Z'*exp(theta) + S(noiseParam));
     # iV  = pinv(V);
-    Gs = (Gs + Gs.T) / 2 # Symmetrize
-    Glambda, GU = eigh(Gs)
-    idx = Glambda > (10e-10) # Find small eigenvalues
-    Zu = Z @ GU[:, idx]
+
     iS = Noise.inverse(noise_params)
     if type(iS) is np.float64:
         matrixInv = (diag(1 / Glambda[idx]) / iS + Zu.T @ Zu)
@@ -150,115 +122,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
     else:
         raise NameError('return_deriv needs to be 0, 1 or 2')
 
-def likelihood_group(theta, M, YY, Z, X=None,
-                       Noise=model.IndependentNoise(),
-                       n_channel=1, fit_scale=True, scale_prior=1e3,
-                       return_deriv=0,return_individ=False):
-    """
-    Negative Log-Likelihood of group data and derivative in respect to the parameters
-
-    Parameters:
-        theta (np.array):
-            Vector of (log-)model parameters consisting of
-                Common model parameters
-                    M.n_param or sum(M.common_param)
-                Participant-specific parameters (interated by subject)
-                    unqiue model parameters (not in common_param)
-                    scale parameter
-                    noise parameters
-        M (pcm.Model):
-            Model object
-        YY (List of np.arrays):
-            List of NxN Matrix of outer product of the activity data (Y*Y')
-        Z (List of 2d-np.array):
-            NxQ Design matrix - relating the trials (N) to the random effects (Q)
-        X (List of np.array):
-            Fixed effects design matrix - will be accounted for by ReML
-        Noise (List of pcm.Noisemodel):
-            Pcm-noise mode to model block-effects (default: Indentity)
-        n_channel (List of int):
-            Number of channels
-        fit_scale (bool):
-            Fit a scaling parameter for the model (default is False)
-        scale_prior (float):
-            Prior variance for log-normal prior on scale parameter
-        return_deriv (int):
-            0: Only return negative likelihood
-            1: Return first derivative
-            2: Return first and second derivative (default)
-        return_individ (bool)
-            return individual likelihoods instead of group likelihood
-                    return_deriv (int)
-    Returns:
-        negloglike:
-            Negative log-likelihood of the data under a model
-        dLdtheta (1d-np.array)
-            First derivative of negloglike in respect to the parameters
-        ddLdtheta2 (2d-np.array)
-            Second derivative of negloglike in respect to the parameters
-
-    """
-    n_subj = len(YY)
-    n_param = theta.shape[0]
-
-    # Determine the common parameters to the group
-    if hasattr(M,'common_param'):
-        common_param = M.common_param
-    else:
-        common_param = np.ones((M.n_param,),dtype=np.bool_)
-
-    # Get the number of parameters
-    n_common = np.sum(common_param) # Number of common params
-    n_modsu = M.n_param - n_common # Number of subject-specific model params
-    n_scale = int(fit_scale) # Number of scale parameters
-    n_noise = Noise[0].n_param # Number of noise params
-    n_per_subj = n_modsu + n_scale + n_noise # Number of parameters per subj
-
-    # Generate the indices into the theta vector
-    indx_common = np.array(range(n_common))
-    indx_subj = np.arange(n_common, n_common + n_subj * n_per_subj, n_per_subj, dtype = int)
-    indx_subj = indx_subj.reshape((1,-1))
-    indx_modsu = np.zeros((n_modsu,1),dtype = int) + indx_subj
-    indx_scale = np.zeros((n_scale,1),dtype = int) + n_modsu + indx_subj
-    indx_noise = np.array(range(n_noise),dtype = int).T + n_scale + n_modsu + indx_subj
-
-    # preallocate the arrays
-    nl = np.zeros((n_subj,))
-    dFdh = np.zeros((n_subj,n_param))
-    dFdhh = np.zeros((n_subj,n_param,n_param))
-
-    # Loop over subjects and get individual likelihoods
-    for s in range(n_subj):
-        # Pick out the correct places for the group parameter vector for each subj
-        indx_model = np.zeros((M.n_param,), dtype=int)
-        indx_model[common_param]=indx_common
-        indx_model[np.logical_not(common_param)]=indx_modsu[:,s]
-        indx = np.concatenate([indx_model, indx_scale[:,s], indx_noise[:,s]])
-        ths = theta[indx]
-        # Get individual likelihood
-        res = likelihood_individ(ths, M, YY[s], Z[s], X[s],
-                       Noise[s], n_channel[s], fit_scale = fit_scale, scale_prior = scale_prior, return_deriv = return_deriv)
-        iS = indx_scale[0,s]
-        nl[s] = res[0]
-        if return_deriv>0:
-            dFdh[s, indx] = res[1]
-        if return_deriv==2:
-            ixgrid = np.ix_([s],indx,indx)
-            dFdhh[ixgrid] = res[2]
-
-    # Integrate over subjects
-    if return_individ:
-        ra = [nl]
-    else:
-        ra = [np.sum(nl, axis=0)]
-    if return_deriv > 0:
-        ra.append(np.sum(dFdh,axis=0)) # First derivative
-    if return_deriv > 1:
-        ra.append(np.sum(dFdhh,axis=0)) # Second derivative
-    return ra
-
-def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
-                    scale_prior = 1e3, noise_cov=None, algorithm=None, optim_param={}, theta0=None):
+def fit(Y, Zc, theta0=None):
     """
     Fits pattern component model(s) specified by M to data from a number of
     subjects.The model parameters are all individually fit.

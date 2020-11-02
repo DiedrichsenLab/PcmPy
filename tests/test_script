@@ -15,35 +15,9 @@ import pickle
 import matplotlib.pyplot as plt
 
 # class TestInference(unittest.TestCase):
-f = open('/Users/jdiedrichsen/Python/PcmPy/demos/data_demo_finger7T.p','rb')
-Data,cond_vec,part_vec,modelM = pickle.load(f)
+f = open('/Users/jdiedrichsen/Python/PcmPy/demos/data_regression_test.p','rb')
+Z,Y,U,comp = pickle.load(f)
 f.close()
 
-# Build the datasets from the Data and condition vectors 
-Y = list()
-for i in range(len(Data)):
-    obs_des = {'cond_vec': cond_vec[i],
-               'part_vec': part_vec[i]}
-    Y.append(pcm.Dataset(Data[i],obs_descriptors = obs_des))
-
-N=len(Y)
-G_hat = np.zeros((N,5,5))
-for i in range(N):
-    G_hat[i,:,:],_ = pcm.util.est_G_crossval(Y[i].measurements,
-                            Y[i].obs_descriptors['cond_vec'],
-                            Y[i].obs_descriptors['part_vec'],
-                            X=pcm.matrix.indicator(Y[i].obs_descriptors['part_vec']))
-
-# Build models from the second momement matrices
-M = []
-M.append(pcm.ModelFixed('null',np.eye(5)))
-M.append(pcm.ModelFixed('muscle',modelM[0]))
-M.append(pcm.ModelFixed('natural',modelM[1]))
-M.append(pcm.ModelComponent('muscle+nat',[modelM[0],modelM[1]]))
-M.append(pcm.ModelFree('ceil',5))
-
-T_gr, theta_in = pcm.inference.fit_model_group(Y, M, fit_scale=True)
-T_cv, theta_in = pcm.inference.fit_model_group_crossval(Y, M, fit_scale=True)
-# T_in, theta_in = pcm.inference.fit_model_individ(Y, M, fit_scale=True)
-
-pcm.vis.model_plot(T_cv.likelihood,null_model = 'null',noise_ceiling = 'ceil', upper_ceiling = T_gr.likelihood['ceil'])
+# Evaluate likelihood 
+theta = np.array([0,0,0,0])

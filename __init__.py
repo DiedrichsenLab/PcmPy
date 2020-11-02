@@ -15,3 +15,4 @@ import PcmPy.optimize as optimize
 import PcmPy.model as model
 import PcmPy.util as util
 import PcmPy.vis as vis
+import PcmPy.regression as regression

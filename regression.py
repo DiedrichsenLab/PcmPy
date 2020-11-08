@@ -54,10 +54,10 @@ def likelihood_diag(theta, Z, Y, comp, X=None, Noise=pcm.model.IndependentNoise(
     iS = Noise.inverse(noise_params)
     iG = 1 / exp(model_params[comp]) # Diagonal of the Inverse of G
     if type(iS) is np.float64:
-        matrixInv = np.diag(iG) + Z.T @ Z * iS # Inner Matrix 
+        matrixInv = np.diag(iG) + Z.T @ Z * iS # Inner Matrix
         iV = (eye(N) - Z @ solve(matrixInv, Z.T) * iS) * iS
     else:
-        matrixInv = np.diag(iG) + Z.T @ iS @ Z 
+        matrixInv = np.diag(iG) + Z.T @ iS @ Z
         iV = iS - iS @ Z @ solve(matrixInv,Z.T) @ iS
     # For ReML, compute the modified inverse iVr
     if X is not None:
@@ -69,7 +69,7 @@ def likelihood_diag(theta, Z, Y, comp, X=None, Noise=pcm.model.IndependentNoise(
     # Computation of (restricted) likelihood
     B = Y @ Y.T @ iVr
     ldet = -2 * sum(log(diag(cholesky(iV)))) # Safe computation
-    llik = -num_var / 2 * ldet - 0.5 * einsum('ii->',B) # trace B 
+    llik = -num_var / 2 * ldet - 0.5 * einsum('ii->',B) # trace B
     if X is not None:
         # P/2 log(det(X'V^-1*X))
         llik -= num_var * sum(log(diag(cholesky(X.T @ iV @X)))) #
@@ -114,30 +114,47 @@ def likelihood_diag(theta, Z, Y, comp, X=None, Noise=pcm.model.IndependentNoise(
     else:
         raise NameError('return_deriv needs to be 0, 1 or 2')
 
-def fit(Z, Y, comp, X, Noise=pcm.model.IndependentNoise(),optim_param={},theta0=None):
-    """
-    Fit a ridge-regression model Y = Z * U  + X * B + eps 
-    to some Y.  
 
-    Parameters:
-        Z (2d-np.array)
-            Design matrix for random effects NxQ
-        Y  (2d-np.array)
-            NxP Matrix of data
-        comp (1d-np.array or list)
-            Q-length: Indicates for each column of Z, which theta will be used for the weighting
-        X (np.array)
-            Fixed effects design matrix - will be accounted for by ReML
-        Noise (pcm.Noisemodel)
-            Pcm-noise mode to model block-effects (default: Indentity)
-        theta0 (1d-np.array)
-            Starting value for theta parameters 
-
-    Returns:
-        theta  (1d-np.array)
+class RidgeDiag:
     """
-    n_param = max(comp)+1+Noise.n_param
-    th0 = np.zeros((n_param,))
-    fcn = lambda x: likelihood_diag(x, Z, Y, comp, X, Noise,return_deriv=2)
-    theta, l, INFO = pcm.optimize.newton(th0, fcn, **optim_param)
-    return theta, l, INFO
+        Class for Linear Regression with Tikhonov (L2) regularization.
+        The regularization matrix for this class is diagnonal, with groups
+        of elements along the diagonal sharing the same Regularisation factor.
+    """
+    def __init__(self, components, theta0 = None, Noise_model, fit_intercept = True):
+        self.components = components
+        self.n_param = max(components)+2
+        self.optimizer = 'newton' # Default optimization algorithm
+        self.theta0_ = np.zeros((n_param,)) # Empty theta0
+        self.theta_  = np.zeros((n_param,))
+
+    def optimize_lambda(self, Z , Y, X = None):
+        """
+        Optimizar the
+        Parameters:
+            Z (2d-np.array)
+                Design matrix for random effects NxQ
+            Y  (2d-np.array)
+                NxP Matrix of data
+            comp (1d-np.array or list)
+                Q-length: Indicates for each column of Z, which theta will be used for the weighting
+            X (np.array)
+                Fixed effects design matrix - will be accounted for by ReML
+            Noise (pcm.Noisemodel)
+                Pcm-noise mode to model block-effects (default: Indentity)
+        Returns:
+            theta  (1d-np.array)
+        """
+        n_param = max(comp)+1+Noise.n_param
+        th0 = np.zeros((n_param,))
+        fcn = lambda x: likelihood_diag(x, Z, Y, comp, X, Noise,return_deriv=2)
+        theta, l, INFO = pcm.optimize.newton(th0, fcn, **optim_param)
+        return theta, l, INFO
+
+
+    def predict(self,theta):
+        raise(NameError("caluclate G needs to be implemented"))
+
+    def set_params(self,params):
+
+    def get_params(self,params):

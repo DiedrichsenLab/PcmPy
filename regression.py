@@ -121,14 +121,17 @@ class RidgeDiag:
         The regularization matrix for this class is diagnonal, with groups
         of elements along the diagonal sharing the same Regularisation factor.
     """
-    def __init__(self, components, theta0 = None, Noise_model, fit_intercept = True):
+    def __init__(self, components, theta0 = None, fit_intercept =  True, noise_model = pcm.model.IndependentNoise()):
         self.components = components
-        self.n_param = max(components)+2
+        self.noise_model = noise_model
+        self.n_param = max(components)+1+self.noise_model.n_param
+        self.noise_idx = np.arange(max(components)+1,self.n_param)
         self.optimizer = 'newton' # Default optimization algorithm
-        self.theta0_ = np.zeros((n_param,)) # Empty theta0
-        self.theta_  = np.zeros((n_param,))
+        self.theta0_ = np.zeros((self.n_param,)) # Empty theta0
+        self.theta_  = np.zeros((self.n_param,))
+        self.fit_intercept = fit_intercept
 
-    def optimize_lambda(self, Z , Y, X = None):
+    def optimize_regularization(self, Z , Y, X = None, optim_param = {}):
         """
         Optimizar the
         Parameters:
@@ -145,16 +148,60 @@ class RidgeDiag:
         Returns:
             theta  (1d-np.array)
         """
-        n_param = max(comp)+1+Noise.n_param
-        th0 = np.zeros((n_param,))
-        fcn = lambda x: likelihood_diag(x, Z, Y, comp, X, Noise,return_deriv=2)
-        theta, l, INFO = pcm.optimize.newton(th0, fcn, **optim_param)
-        return theta, l, INFO
+        Z, X = self.add_intercept(Z, X)
+        fcn = lambda x: likelihood_diag(x, Z, Y, self.components, X, self.noise_model, return_deriv=2)
+        self.theta_, self.trainLogLike_, self.optim_info = pcm.optimize.newton(self.theta0_, fcn, **optim_param)
+        return self
 
 
-    def predict(self,theta):
-        raise(NameError("caluclate G needs to be implemented"))
+    def fit(self, Z ,Y , X = None): 
+        N = Z.shape[0]
+        Z, X = self.add_intercept(Z, X)
+        # Get the inverse of the covariance matrix 
+        G = exp(self.theta_[self.components]) # Diagonal of the Inverse of G
+        iS = self.noise_model.inverse(self.theta_[self.noise_idx])
+        if type(iS) is np.float64:
+            matrixInv = np.diag(1/G) + Z.T @ Z * iS # Inner Matrix
+            iV = (eye(N) - Z @ solve(matrixInv, Z.T) * iS) * iS
+        else:
+            matrixInv = np.diag(1/G) + Z.T @ iS @ Z
+            iV = iS - iS @ Z @ solve(matrixInv,Z.T) @ iS
+
+        # If any fixed effects are given, estimate them and modify residual forming matrix 
+        if X is not None:
+            iVX   = iV @ X
+            P     = X @ solve(X.T @ iVX, iVX.T)
+            self.beta_ = P * Y
+            Yr = Y - X @ self.beta_
+        else:
+            Yr = Y
+
+        # Estimate the random effects over solve
+        self.coef_ = np.diag(G) @ Z.T @ iV @ Yr
+        return self
+
+    def predict(self, Z, X = None):
+        self.add_intercept(Z, X)
+        if (X is None):
+            Yp = Z @ self.coef_
+        else:
+            Yp = Z @ self.coef_ + X @ self.beta_
+        return Yp
 
     def set_params(self,params):
+        pass
 
     def get_params(self,params):
+        pass
+
+    def add_intercept(self, Z, X = None):
+        N  = Z.shape[0]
+        if (self.fit_intercept):
+            if (X is None):
+                X = np.ones((N,1))
+            else:
+                X = np.c_[X - np.mean(X,axis=0),np.ones((N,))]
+            Z = Z - np.mean(Z,axis=0)
+        return Z, X
+
+

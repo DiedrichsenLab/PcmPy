@@ -19,5 +19,9 @@ f = open('/Users/jdiedrichsen/Python/PcmPy/demos/data_regression_test.p','rb')
 Z,Y,U,comp = pickle.load(f)
 f.close()
 
-# Evaluate likelihood 
-theta = np.array([0,0,0,0])
+# Make model 
+Z = Z + 1
+A = pcm.regression.RidgeDiag(comp, fit_intercept = True)
+A.optimize_regularization(Z,Y)
+A.fit(Z,Y)
+Yp = A.predict(Z)

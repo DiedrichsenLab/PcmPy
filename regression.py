@@ -154,10 +154,10 @@ class RidgeDiag:
         return self
 
 
-    def fit(self, Z ,Y , X = None): 
+    def fit(self, Z ,Y , X = None):
         N = Z.shape[0]
         Z, X = self.add_intercept(Z, X)
-        # Get the inverse of the covariance matrix 
+        # Get the inverse of the covariance matrix
         G = exp(self.theta_[self.components]) # Diagonal of the Inverse of G
         iS = self.noise_model.inverse(self.theta_[self.noise_idx])
         if type(iS) is np.float64:
@@ -167,11 +167,11 @@ class RidgeDiag:
             matrixInv = np.diag(1/G) + Z.T @ iS @ Z
             iV = iS - iS @ Z @ solve(matrixInv,Z.T) @ iS
 
-        # If any fixed effects are given, estimate them and modify residual forming matrix 
+        # If any fixed effects are given, estimate them and modify residual forming matrix
         if X is not None:
             iVX   = iV @ X
-            P     = X @ solve(X.T @ iVX, iVX.T)
-            self.beta_ = P * Y
+            P     = solve(X.T @ iVX, iVX.T)
+            self.beta_ = P @ Y
             Yr = Y - X @ self.beta_
         else:
             Yr = Y

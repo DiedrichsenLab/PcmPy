@@ -19,7 +19,7 @@ f = open('/Users/jdiedrichsen/Python/PcmPy/demos/data_regression_test.p','rb')
 Z,Y,U,comp = pickle.load(f)
 f.close()
 
-# Make model 
+# Make model
 Z = Z + 1
 A = pcm.regression.RidgeDiag(comp, fit_intercept = True)
 A.optimize_regularization(Z,Y)

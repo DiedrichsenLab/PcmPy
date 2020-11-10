@@ -95,9 +95,3 @@ def do_sim(comp, theta, num_sim = 10, N = 50, P = 100,
         T['alpha'][i]=R_search.best_params_['ridge__alpha']
         T['R2_Rid'][i] = r2_score(Yt,Yp3)
     return T
-
-# Make model
-comp = np.array([0,0,0,0,0,0,0,0,0])
-theta = np.array([-1.0,1.0])
-D = do_sim(comp, theta, P = 1, N = 100) 
-pass

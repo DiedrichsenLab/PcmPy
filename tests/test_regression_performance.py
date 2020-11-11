@@ -96,8 +96,7 @@ def method_compare(comp, theta, num_sim = 10, N = 50, P = 100,
         T['R2_Rid'][i] = r2_score(Yt,Yp3)
     return T
 
-def pcm_performance(comp, theta, num_sim = 10, N = 50, P = 100,
-        alpha_spacing = exp(np.linspace(-1,5,10)),fixed_effect = None, fit_intercept = False):
+def pcm_performance(comp, theta, num_sim = 10, N = 50, P = 100, fixed_effect = None, fit_intercept = False):
     Q = comp.shape[0]
     s = sqrt(exp(theta[comp]))
     z = np.zeros((num_sim,))
@@ -137,4 +136,39 @@ def pcm_performance(comp, theta, num_sim = 10, N = 50, P = 100,
         for j in range(n_param):
             T['theta'+str(j)][i]=M.theta_[j]
         T['R2_Pcm'][i] = r2_score(Yt,Yp)
+    return T
+
+def likelihood_compare(comp, theta, num_sim = 10, N = 50, P = 100,
+                       fixed_effect = None, fit_intercept = False):
+    Q = comp.shape[0]
+    s = sqrt(exp(theta[comp]))
+    z = np.zeros((num_sim*2,))
+
+    # Prepare output structure
+    n_param = theta.shape[0]
+    df = {}
+    for i in range(n_param):
+        df.update({'theta' + str(i): z})
+    df.update({'R2_Pcm':z,'time_Pcm':z,'likefcn':z})
+    T = pd.DataFrame(df)
+
+    # Prepare Ridge regression
+    M = pcm.regression.RidgeDiag(comp, fit_intercept = fit_intercept)
+
+    for i in range(num_sim):
+        # Make training data
+        U = np.random.normal(0,1,(Q,P))
+        U = U * s.reshape((Q,1))
+        Z = np.random.normal(0,1,(N,Q))
+        Y = Z @ U + np.random.normal(0,sqrt(exp(theta[-1])),(N,P))
+
+        for j,lf in enumerate(['YYT','YTY']):
+            idx = i*2 + j
+            # PCM regression
+            t0 = time.perf_counter()
+            M.optimize_regularization(Z,Y,like_fcn = lf)
+            T.loc[idx,'time_Pcm'] = time.perf_counter() - t0
+            for k in range(n_param):
+                T.loc[idx,'theta'+str(k)]=M.theta_[k]
+            T.loc[idx,'likefcn']=lf
     return T

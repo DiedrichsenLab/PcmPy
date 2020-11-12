@@ -261,7 +261,7 @@ class RidgeDiag:
         Z, X = self.add_intercept(Z, X)
         N, P = Y.shape
         if like_fcn == 'auto':
-            if N> 7 * P: 
+            if N > 7 * P:  # This is likely a crude approximation
                 like_fcn = 'YTY'
             else:
                 like_fcn = 'YYT'

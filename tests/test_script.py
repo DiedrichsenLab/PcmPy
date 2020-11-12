@@ -26,15 +26,10 @@ from test_regression_performance import r2_score, method_compare, pcm_performanc
 
 
 # Make model
-T = pd.DataFrame()
-theta = np.array([-1.0,1.0])
-for P in [100]:
-    for Q in [10]:
-        for N in [1000]:
-            comp = np.zeros((Q,1),dtype = int)
-            D = method_compare(comp, theta, P = P, N = N)
-            D['N']=N
-            D['P']=P
-            D['Q']=Q
-            T.append(D, ignore_index=True)
-pass
+TL = pd.DataFrame()
+comp  = np.array([0,0,0,0,0,0,0,0]) # 20 regressors in 4 groups
+Q = comp.shape[0]
+theta = np.array([0.0,1.0]) # Theta's for simulation 
+P = 1
+N = 1
+D = pcm_performance(comp, theta, P = P, N = N)

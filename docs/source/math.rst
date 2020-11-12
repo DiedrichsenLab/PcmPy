@@ -1,5 +1,5 @@
-Mathematical and algorithmical details
-======================================
+Mathematical details
+====================
 
 Likelihood
 ----------

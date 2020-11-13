@@ -5,10 +5,6 @@ test_indicator
 
 @author: jdiedrichsen
 """
-import sys
-print(sys.path)
-sys.path.append('/Users/jdiedrichsen/Python')
-import unittest
 # Import necessary libraries
 import PcmPy as pcm
 import numpy as np
@@ -139,7 +135,7 @@ def pcm_performance(comp, theta, num_sim = 10, N = 50, P = 100, fixed_effect = N
     return T
 
 def likelihood_compare(comp, theta, num_sim = 10, N = 50, P = 100,
-                       fixed_effect = None, fit_intercept = False):
+                       fixed_effect = None, fit_intercept = False, likefcn=['YYT','YTY']):
     Q = comp.shape[0]
     s = sqrt(exp(theta[comp]))
     z = np.zeros((num_sim*2,))
@@ -162,8 +158,8 @@ def likelihood_compare(comp, theta, num_sim = 10, N = 50, P = 100,
         Z = np.random.normal(0,1,(N,Q))
         Y = Z @ U + np.random.normal(0,sqrt(exp(theta[-1])),(N,P))
 
-        for j,lf in enumerate(['YYT','YTY']):
-            idx = i*2 + j
+        for j,lf in enumerate(likefcn):
+            idx = i*len(likefcn) + j
             # PCM regression
             t0 = time.perf_counter()
             M.optimize_regularization(Z,Y,like_fcn = lf)

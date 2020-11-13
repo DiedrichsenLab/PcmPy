@@ -6,7 +6,6 @@ test_indicator
 @author: jdiedrichsen
 """
 import sys
-print(sys.path)
 sys.path.append('/Users/jdiedrichsen/Python')
 import unittest
 # Import necessary libraries
@@ -29,8 +28,8 @@ from test_regression_performance import r2_score, method_compare, pcm_performanc
 TL = pd.DataFrame()
 comp  = np.array([0,0,0,1,1,1,2,2]) # 20 regressors in 4 groups
 Q = comp.shape[0]
-theta = np.array([0.0,-1e20,-1e20,1.0]) # Theta's for simulation 
+theta = np.array([0.0,-1e20,-1e20,1.0]) # Theta's for simulation
 P = 1
-N = 1500
-D = pcm_performance(comp, theta, P = P, N = N)
+N = 500
+D = likelihood_compare(comp, theta, P = P, N = N, likefcn=['YTY','YTY1','YTY2'],num_sim=5)
 pass

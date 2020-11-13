@@ -54,16 +54,16 @@ def likelihood_diagYYT(theta, Z, YY, num_var, comp, X=None, Noise=pcm.model.Inde
     # iV  = pinv(V);
 
     G  = exp(model_params[comp])
-    idx = G > (10e-10) # Find sufficiently large weights 
+    idx = G > (10e-10) # Find sufficiently large weights
     iG = 1 / G[idx]
     iS = Noise.inverse(noise_params)
     Zr = Z[:,idx]
     if type(iS) is np.float64:
         matrixInv = np.diag(iG) + Zr.T @ Zr * iS # Inner Matrix
         iV = (eye(N) - Zr @ solve(matrixInv, Zr.T) * iS) * iS
-        Zw = Zr * sqrt(G[idx]) # Weighted Z 
+        Zw = Zr * sqrt(G[idx]) # Weighted Z
         lam,_ = eigh(Zw.T @ Zw)
-        ldet = sum(log(lam+1/iS)) - (N-sum(idx))*log(iS) # Shortcut to log-determinant 
+        ldet = sum(log(lam+1/iS)) - (N-sum(idx))*log(iS) # Shortcut to log-determinant
     else:
         matrixInv = np.diag(iG) + Zr.T @ iS @ Zr
         iV = iS - iS @ Zr @ solve(matrixInv,Zr.T) @ iS
@@ -169,14 +169,14 @@ def likelihood_diagYTY(theta, Z, Y, comp, X=None, Noise=pcm.model.IndependentNoi
 
     iS = Noise.inverse(noise_params)
     G  = exp(model_params[comp])
-    idx = G > (10e-10) # Find sufficiently large weights 
+    idx = G > (10e-10) # Find sufficiently large weights
     iG = 1 / G[idx]
     iS = Noise.inverse(noise_params)
     Zr = Z[:,idx]
-    if type(iS) is np.float64: # For i.i.d noise use fast solution 
+    if type(iS) is np.float64: # For i.i.d noise use fast solution
         matrixInv = np.diag(iG) + Zr.T @ Zr * iS # Inner Matrix
         iV = (eye(N) - Zr @ solve(matrixInv, Zr.T) * iS) * iS
-    else:                       # For non-i.i.d noise use slower solution 
+    else:                       # For non-i.i.d noise use slower solution
         matrixInv = np.diag(iG) + Zr.T @ iS @ Zr
         iV = iS - iS @ Zr @ solve(matrixInv,Zr.T) @ iS
 
@@ -215,7 +215,7 @@ def likelihood_diagYTY(theta, Z, Y, comp, X=None, Noise=pcm.model.IndependentNoi
             iVdV.append(iVr @ dVdtheta)
 
     # Based on iVdV we can get he first derivative
-    # Last term is 
+    # Last term is
     #     0.5 trace(Y.T @ iVr @ dV @ iVr @ Y)
     #  =  0.5 trace(Y.T @ iVdV @ iVr @ Y)
     dLdtheta = np.zeros((n_param,))
@@ -255,17 +255,17 @@ def likelihood_diagYTY1(theta, Z, Y, comp, X=None, Noise=pcm.model.IndependentNo
 
     iS = Noise.inverse(noise_params)
     G  = exp(model_params[comp])
-    idx = G > (10e-10) # Find sufficiently large weights 
+    idx = G > (10e-10) # Find sufficiently large weights
     iG = 1 / G[idx]
     iS = Noise.inverse(noise_params)
     Zr = Z[:,idx]
-    if type(iS) is np.float64: # For i.i.d noise use fast solution 
+    if type(iS) is np.float64: # For i.i.d noise use fast solution
         matrixInv = np.diag(iG) + Zr.T @ Zr * iS # Inner Matrix
         iV = (eye(N) - Zr @ solve(matrixInv, Zr.T) * iS) * iS
-        Zw = Zr * sqrt(G[idx]) # Weighted Z 
+        Zw = Zr * sqrt(G[idx]) # Weighted Z
         lam,_ = eigh(Zw.T @ Zw)
-        ldet = sum(log(lam+1/iS)) - (N-sum(idx))*log(iS) # Shortcut to log-determinant 
-    else:                       # For non-i.i.d noise use slower solution 
+        ldet = sum(log(lam+1/iS)) - (N-sum(idx))*log(iS) # Shortcut to log-determinant
+    else:                       # For non-i.i.d noise use slower solution
         matrixInv = np.diag(iG) + Zr.T @ iS @ Zr
         iV = iS - iS @ Zr @ solve(matrixInv,Zr.T) @ iS
         ldet = -2 * sum(log(diag(cholesky(iV)))) # Safe computation
@@ -303,7 +303,7 @@ def likelihood_diagYTY1(theta, Z, Y, comp, X=None, Noise=pcm.model.IndependentNo
             iVdV.append(iVr @ dVdtheta)
 
     # Based on iVdV we can get he first derivative
-    # Last term is 
+    # Last term is
     #     0.5 trace(Y.T @ iVr @ dV @ iVr @ Y)
     #  =  0.5 trace(Y.T @ iVdV @ iVr @ Y)
     dLdtheta = np.zeros((n_param,))
@@ -343,17 +343,17 @@ def likelihood_diagYTY2(theta, Z, Y, comp, X=None, Noise=pcm.model.IndependentNo
 
     iS = Noise.inverse(noise_params)
     G  = exp(model_params[comp])
-    idx = G > (10e-10) # Find sufficiently large weights 
+    idx = G > (10e-10) # Find sufficiently large weights
     iG = 1 / G[idx]
     iS = Noise.inverse(noise_params)
     Zr = Z[:,idx]
-    if type(iS) is np.float64: # For i.i.d noise use fast solution 
+    if type(iS) is np.float64: # For i.i.d noise use fast solution
         matrixInv = np.diag(iG) + Zr.T @ Zr * iS # Inner Matrix
         iV = (eye(N) - Zr @ solve(matrixInv, Zr.T) * iS) * iS
-        Zw = Zr * sqrt(G[idx]) # Weighted Z 
+        Zw = Zr * sqrt(G[idx]) # Weighted Z
         lam,_ = eigh(Zw.T @ Zw)
-        ldet = sum(log(lam+1/iS)) - (N-sum(idx))*log(iS) # Shortcut to log-determinant 
-    else:                       # For non-i.i.d noise use slower solution 
+        ldet = sum(log(lam+1/iS)) - (N-sum(idx))*log(iS) # Shortcut to log-determinant
+    else:                       # For non-i.i.d noise use slower solution
         matrixInv = np.diag(iG) + Zr.T @ iS @ Zr
         iV = iS - iS @ Zr @ solve(matrixInv,Zr.T) @ iS
         ldet = -2 * sum(log(diag(cholesky(iV)))) # Safe computation
@@ -376,27 +376,30 @@ def likelihood_diagYTY2(theta, Z, Y, comp, X=None, Noise=pcm.model.IndependentNo
         return (-llik,) # Return as tuple for consistency
 
     # Calculate the first derivative
-    iVdV = []
-
+    iVZ  = []
     # Get the quantity iVdV = inv(V)dVdtheta for model parameters
-    for i,theta in enumerate(model_params):
-        iVdV.append(iVr @ Z[:,comp==i] @ Z[:,comp==i].T * exp(theta))
-
+    for i,th in enumerate(model_params):
+        iVZ.append(iVr @ Z[:,comp==i])
     # Get iVdV for Noise parameters
-    for j,theta in enumerate(noise_params):
+    for j,th in enumerate(noise_params):
         dVdtheta = Noise.derivative(noise_params,j)
         if type(dVdtheta) is np.float64:
-            iVdV.append(iVr * dVdtheta)
+            iVZ.append(iVr * dVdtheta)
         else:
-            iVdV.append(iVr @ dVdtheta)
+            iVZ.append(iVr @ dVdtheta)
 
     # Based on iVdV we can get he first derivative
-    # Last term is 
+    # Last term is
     #     0.5 trace(Y.T @ iVr @ dV @ iVr @ Y)
     #  =  0.5 trace(Y.T @ iVdV @ iVr @ Y)
     dLdtheta = np.zeros((n_param,))
-    for i in range(n_param):
-        dLdtheta[i] = -num_var / 2 * trace(iVdV[i]) + 0.5 * einsum('ij,ij->',Y.T @ iVdV[i], YiVr)
+
+    for i,th in enumerate(theta):
+        if i < model_params.shape[0]:
+            A = Y.T @ iVZ[i]
+            dLdtheta[i]= -exp(th)/2 * (num_var * einsum('ij,ij->',iVZ[i],Z[:,comp==i])-einsum('ij,ij->', A, A))
+        else:
+            dLdtheta[i]= -num_var / 2 * trace(iVZ[i]) + 0.5 * einsum('ij,ij->', Y.T @ iVZ[i], YiVr)
 
     # If only first derivative, exit here
     if return_deriv == 1:
@@ -406,13 +409,19 @@ def likelihood_diagYTY2(theta, Z, Y, comp, X=None, Noise=pcm.model.IndependentNo
     d2L = np.zeros((n_param,n_param))
     for i in range(n_param):
         for j in range(i, n_param):
-            d2L[i, j] = -num_var / 2 * einsum('ij,ij->',iVdV[i],iVdV[j])
+            if (j < model_params.shape[0]):
+                d2L[i, j] = -num_var / 2 * einsum('ij,ji->',Z[:,comp==j].T @ iVZ[i], Z[:,comp==i].T @ iVZ[j]) * exp(theta[i]) * exp(theta[j])
+            elif (i < model_params.shape[0]):
+                d2L[i, j] = -num_var / 2 * einsum('ij,ji->',iVZ[i], Z[:,comp==i].T @ iVZ[j])* exp(theta[i])
+            else:
+                d2L[i, j] = -num_var / 2 * einsum('ij,ji->',iVZ[i], iVZ[j])
             d2L[j, i] = d2L[i, j]
 
     if return_deriv == 2:
         return (-llik, -dLdtheta, -d2L)
     else:
         raise NameError('return_deriv needs to be 0, 1 or 2')
+
 
 class RidgeDiag:
     """
@@ -453,18 +462,16 @@ class RidgeDiag:
                 like_fcn = 'YTY'
             else:
                 like_fcn = 'YYT'
-        
+
         if like_fcn == 'YTY':
             fcn = lambda x: likelihood_diagYTY(x, Z, Y, self.components, X, self.noise_model, return_deriv=2)
         elif like_fcn == 'YYT':
             YY = Y @ Y.T
             fcn = lambda x: likelihood_diagYYT(x, Z, YY, P, self.components, X, self.noise_model, return_deriv=2)
-        elif like_fcn == 'YYT1':
-            YY = Y @ Y.T
-            fcn = lambda x: likelihood_diagYYT1(x, Z, YY, P, self.components, X, self.noise_model, return_deriv=2)
-        elif like_fcn == 'YYT2':
-            YY = Y @ Y.T
-            fcn = lambda x: likelihood_diagYYT2(x, Z, YY, P, self.components, X, self.noise_model, return_deriv=2)
+        elif like_fcn == 'YTY1':
+            fcn = lambda x: likelihood_diagYTY1(x, Z, Y, self.components, X, self.noise_model, return_deriv=2)
+        elif like_fcn == 'YTY2':
+            fcn = lambda x: likelihood_diagYTY2(x, Z, Y, self.components, X, self.noise_model, return_deriv=2)
         else:
             raise NameError('like_fcn needs to be auto, YYT, or YTY')
         self.theta_, self.trainLogLike_, self.optim_info = pcm.optimize.newton(self.theta0_, fcn, **optim_param)

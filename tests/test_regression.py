@@ -5,10 +5,7 @@ test_indicator
 
 @author: jdiedrichsen
 """
-# import sys
-# sys.path.append('/Users/jdiedrichsen/Python')
 import sys
-print(sys.path)
 sys.path.append('/Users/jdiedrichsen/Python')
 import unittest
 import PcmPy as pcm
@@ -46,12 +43,15 @@ class TestRegression(unittest.TestCase):
         self.assertAlmostEqual(l1,l2)
         self.assertAlmostEqual(l1,l3)
         self.assertAlmostEqual(l1,l4)
-        self.assertAlmostEqual(dl1[0],dl2[0])
-        self.assertAlmostEqual(dl1[0],dl3[0])
-        self.assertAlmostEqual(dl1[0],dl4[0])
-        self.assertAlmostEqual(ddl1[0],ddl2[0])
-        self.assertAlmostEqual(ddl1[0],ddl3[0])
-        self.assertAlmostEqual(ddl1[0],ddl4[0])
+        for i in range(4):
+            self.assertAlmostEqual(dl1[i],dl2[i])
+            self.assertAlmostEqual(dl1[i],dl3[i])
+            self.assertAlmostEqual(dl1[i],dl4[i])
+        for i in range(4):
+            for j in range(4):
+                self.assertAlmostEqual(ddl1[i,j],ddl2[i,j])
+                self.assertAlmostEqual(ddl1[i,j],ddl3[i,j])
+                self.assertAlmostEqual(ddl1[i,j],ddl4[i,j])
 
     def test_constructor(self):
         A = pcm.regression.RidgeDiag(comp, fit_intercept = False)

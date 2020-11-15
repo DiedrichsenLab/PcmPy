@@ -8,7 +8,7 @@ from numpy.linalg import solve, eigh, cholesky
 from numpy import sum, diag, log, eye, exp, trace, einsum
 from PcmPy import model
 
-def newton(theta0, lossfcn, max_iter=80, thres= 1e-4, hess_reg=1,
+def newton(theta0, lossfcn, max_iter=80, thres= 1e-4, hess_reg=1e-4,
              regularization='sEig',verbose=0, fit_indx = None):
     """
     Minimize a loss function using Newton-Raphson with automatic regularization
@@ -26,7 +26,7 @@ def newton(theta0, lossfcn, max_iter=80, thres= 1e-4, hess_reg=1,
         thres (float)
             Threshold for change in Loss function (default: 1e-4)
         hess_reg (float)
-            starting regulariser on the Hessian matrix (default 1)
+            starting regulariser on the Hessian matrix (default 1e-4)
         regularization (string)
             'L': Levenberg
             'LM': Levenberg-Marquardt

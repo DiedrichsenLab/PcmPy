@@ -135,7 +135,7 @@ def pcm_performance(comp, theta, num_sim = 10, N = 50, P = 100, fixed_effect = N
     return T
 
 def likelihood_compare(comp, theta, num_sim = 10, N = 50, P = 100,
-                       fixed_effect = None, fit_intercept = False, likefcn=['YYT','YTY']):
+                       fixed_effect = None, fit_intercept = False, likefcn=['YYT_ZZT','YYT_ZTZ','YTY_ZZT','YTY_ZTZ']):
     Q = comp.shape[0]
     s = sqrt(exp(theta[comp]))
     z = np.zeros((num_sim*2,))
@@ -165,6 +165,7 @@ def likelihood_compare(comp, theta, num_sim = 10, N = 50, P = 100,
             M.optimize_regularization(Z,Y,like_fcn = lf)
             T.loc[idx,'time_Pcm'] = time.perf_counter() - t0
             for k in range(n_param):
-                T.loc[idx,'theta'+str(k)]=M.theta_[k]
-            T.loc[idx,'likefcn']=lf
+                T.loc[idx,'theta'+str(k)] = M.theta_[k]
+            T.loc[idx,'likefcn'] = lf
+            T.loc[idx,'iter'] = M.optim_info['iter']
     return T

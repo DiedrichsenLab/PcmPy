@@ -128,7 +128,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
     # Based on iVdV we can get he first derivative
     dLdtheta = np.zeros((n_param,))
     for i in range(n_param):
-        dLdtheta[i] = -n_channel / 2 * trace(iVdV[i]) + 0.5 * einsum('ij,ij->',iVdV[i], B)
+        dLdtheta[i] = -n_channel / 2 * trace(iVdV[i]) + 0.5 * einsum('ij,ij->',iVdV[i], B) # Trace(A@B.T)
     if fit_scale:
         dLdtheta[indx_scale] -= scale_param / scale_prior
 
@@ -140,7 +140,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
     d2L = np.zeros((n_param,n_param))
     for i in range(n_param):
         for j in range(i, n_param):
-            d2L[i, j] = -n_channel / 2 * einsum('ij,ij->',iVdV[i],iVdV[j])
+            d2L[i, j] = -n_channel / 2 * einsum('ij,ji->',iVdV[i],iVdV[j]) # Trace(A@B)
             d2L[j, i] = d2L[i, j]
     if fit_scale:
         d2L[indx_scale, indx_scale] -= 1 / scale_prior

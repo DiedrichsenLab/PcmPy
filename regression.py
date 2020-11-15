@@ -112,7 +112,7 @@ def likelihood_diagYYT_ZZT(theta, Z, YY, num_var, comp, X=None, Noise=pcm.model.
     # Based on iVdV we can get he first derivative
     dLdtheta = np.zeros((n_param,))
     for i in range(n_param):
-        dLdtheta[i] = -num_var / 2 * trace(iVdV[i]) + 0.5 * einsum('ij,ij->',iVdV[i], B)
+        dLdtheta[i] = -num_var / 2 * trace(iVdV[i]) + 0.5 * einsum('ij,ij->',iVdV[i], B) # Trace(A@B.T)
 
     # If only first derivative, exit here
     if return_deriv == 1:
@@ -122,7 +122,7 @@ def likelihood_diagYYT_ZZT(theta, Z, YY, num_var, comp, X=None, Noise=pcm.model.
     d2L = np.zeros((n_param,n_param))
     for i in range(n_param):
         for j in range(i, n_param):
-            d2L[i, j] = -num_var / 2 * einsum('ij,ji->',iVdV[i],iVdV[j])
+            d2L[i, j] = -num_var / 2 * einsum('ij,ji->',iVdV[i],iVdV[j]) # Trace(A@B)
             d2L[j, i] = d2L[i, j]
 
     if return_deriv == 2:
@@ -440,15 +440,16 @@ class RidgeDiag:
             else:
                 like_fcn = 'YYT'
 
-        if like_fcn == 'YTY':
-            fcn = lambda x: likelihood_diagYTY(x, Z, Y, self.components, X, self.noise_model, return_deriv=2)
-        elif like_fcn == 'YYT':
+        if like_fcn == 'YYT_ZZT':
             YY = Y @ Y.T
-            fcn = lambda x: likelihood_diagYYT(x, Z, YY, P, self.components, X, self.noise_model, return_deriv=2)
-        elif like_fcn == 'YTY1':
-            fcn = lambda x: likelihood_diagYTY1(x, Z, Y, self.components, X, self.noise_model, return_deriv=2)
-        elif like_fcn == 'YTY2':
-            fcn = lambda x: likelihood_diagYTY2(x, Z, Y, self.components, X, self.noise_model, return_deriv=2)
+            fcn = lambda x: likelihood_diagYYT_ZZT(x, Z, YY, P, self.components, X, self.noise_model, return_deriv=2)
+        elif like_fcn == 'YYT_ZTZ':
+            YY = Y @ Y.T
+            fcn = lambda x: likelihood_diagYYT_ZTZ(x, Z, YY, P, self.components, X, self.noise_model, return_deriv=2)
+        elif like_fcn == 'YTY_ZZT':
+            fcn = lambda x: likelihood_diagYTY_ZZT(x, Z, Y, self.components, X, self.noise_model, return_deriv=2)
+        elif like_fcn == 'YTY_ZTZ':
+            fcn = lambda x: likelihood_diagYTY_ZTZ(x, Z, Y, self.components, X, self.noise_model, return_deriv=2)
         else:
             raise NameError('like_fcn needs to be auto, YYT, or YTY')
         self.theta_, self.trainLogLike_, self.optim_info = pcm.optimize.newton(self.theta0_, fcn, **optim_param)

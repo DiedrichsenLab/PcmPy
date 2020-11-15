@@ -7,7 +7,37 @@ from numpy.linalg import solve, eigh, cholesky
 from numpy import sum, diag, log, eye, exp, trace, einsum, sqrt
 import PcmPy as pcm
 
-def likelihood_diagYYT(theta, Z, YY, num_var, comp, X=None, Noise=pcm.model.IndependentNoise(), return_deriv=0):
+def compute_iVr(Z, G, iS, X = None):
+    """
+    This function solves:
+    a) iV   = inv(Z*G*Z' + S);
+    b) iVr  = iV - iV * X inv(X' * iV *X) * X' *iV
+    c) ldet = log(det(iV))
+    Quickly, using the matrix inversion lemma
+    """
+    N = Z.shape[0]
+    idx = G > (10e-10) # Find sufficiently large weights
+    iG = 1 / G[idx]
+    Zr = Z[:,idx]
+    if type(iS) is np.float64: # For i.i.d noise use fast solution
+        matrixInv = np.diag(iG) + Zr.T @ Zr * iS # Inner Matrix
+        iV = (eye(N) - Zr @ solve(matrixInv, Zr.T) * iS) * iS
+        Zw = Zr * sqrt(G[idx]) # Weighted Z
+        lam,_ = eigh(Zw.T @ Zw)
+        ldet = sum(log(lam+1/iS)) - (N-sum(idx))*log(iS) # Shortcut to log-determinant
+    else:                       # For non-i.i.d noise use slower solution
+        matrixInv = np.diag(iG) + Zr.T @ iS @ Zr
+        iV = iS - iS @ Zr @ solve(matrixInv,Zr.T) @ iS
+        ldet = -2 * sum(log(diag(cholesky(iV)))) # Safe computation
+    # For ReML, compute the modified inverse iVr
+    if X is not None:
+        iVX   = iV @ X
+        iVr   = iV - iVX @ solve(X.T @ iVX, iVX.T)
+    else:
+        iVr = iV
+    return (iV, iVr, ldet)
+
+def likelihood_diagYYT_ZZT(theta, Z, YY, num_var, comp, X=None, Noise=pcm.model.IndependentNoise(), return_deriv=0):
     """
     Negative Log-Likelihood of the data and derivative in respect to the parameters. This function is faster when P>N
 
@@ -48,32 +78,10 @@ def likelihood_diagYYT(theta, Z, YY, num_var, comp, X=None, Noise=pcm.model.Inde
     model_params = theta[range(num_comp)]
     noise_params = theta[num_comp:]
 
-
-    # Matrix inversion lemma. The following statement is the same as
-    # V   = (Z*Z'*exp(theta) + S(noiseParam));
-    # iV  = pinv(V);
-
-    G  = exp(model_params[comp])
-    idx = G > (10e-10) # Find sufficiently large weights
-    iG = 1 / G[idx]
+    # Calculate iV and iVr via Matrix inversion lemma.
     iS = Noise.inverse(noise_params)
-    Zr = Z[:,idx]
-    if type(iS) is np.float64:
-        matrixInv = np.diag(iG) + Zr.T @ Zr * iS # Inner Matrix
-        iV = (eye(N) - Zr @ solve(matrixInv, Zr.T) * iS) * iS
-        Zw = Zr * sqrt(G[idx]) # Weighted Z
-        lam,_ = eigh(Zw.T @ Zw)
-        ldet = sum(log(lam+1/iS)) - (N-sum(idx))*log(iS) # Shortcut to log-determinant
-    else:
-        matrixInv = np.diag(iG) + Zr.T @ iS @ Zr
-        iV = iS - iS @ Zr @ solve(matrixInv,Zr.T) @ iS
-        ldet = -2 * sum(log(diag(cholesky(iV)))) # Safe computation
-    # For ReML, compute the modified inverse iVr
-    if X is not None:
-        iVX   = iV @ X
-        iVr   = iV - iVX @ solve(X.T @ iVX, iVX.T)
-    else:
-        iVr = iV
+    G  = exp(model_params[comp])
+    iV, iVr, ldet = compute_iVr(Z, G, iS, X)
 
     # Computation of (restricted) likelihood
     B = YY @ iVr
@@ -114,7 +122,7 @@ def likelihood_diagYYT(theta, Z, YY, num_var, comp, X=None, Noise=pcm.model.Inde
     d2L = np.zeros((n_param,n_param))
     for i in range(n_param):
         for j in range(i, n_param):
-            d2L[i, j] = -num_var / 2 * einsum('ij,ij->',iVdV[i],iVdV[j])
+            d2L[i, j] = -num_var / 2 * einsum('ij,ji->',iVdV[i],iVdV[j])
             d2L[j, i] = d2L[i, j]
 
     if return_deriv == 2:
@@ -122,7 +130,110 @@ def likelihood_diagYYT(theta, Z, YY, num_var, comp, X=None, Noise=pcm.model.Inde
     else:
         raise NameError('return_deriv needs to be 0, 1 or 2')
 
-def likelihood_diagYTY(theta, Z, Y, comp, X=None, Noise=pcm.model.IndependentNoise(), return_deriv=0):
+def likelihood_diagYYT_ZTZ(theta, Z, YY, num_var, comp, X=None, Noise=pcm.model.IndependentNoise(), return_deriv=0):
+    """
+    Negative Log-Likelihood of the data and derivative in respect to the parameters. This function is faster when P>N
+
+    Parameters:
+        theta (np.array)
+            Vector of (log-)model parameters: These include model, signal and noise parameters
+        Z (2d-np.array)
+            Design matrix for random effects NxQ
+        YY  (2d-np.array)
+            NxN Matrix: Outer product of the data
+        num_var (int)
+            Number of variables in data set (columns of Y)
+        comp (1d-np.array or list)
+            Q-length: Indicates for each column of Z, which theta will be used for the weighting
+        X (np.array)
+            Fixed effects design matrix - will be accounted for by ReML
+        Noise (pcm.Noisemodel)
+            Pcm-noise mode to model block-effects (default: Indentity)
+        return_deriv (int)
+            0: Only return negative loglikelihood
+            1: Return first derivative
+            2: Return first and second derivative (default)
+
+    Returns:
+        negloglike:
+            Negative log-likelihood of the data under a model
+        dLdtheta (1d-np.array)
+            First derivative of negloglike in respect to the parameters
+        ddLdtheta2 (2d-np.array)
+            Second derivative of negloglike in respect to the parameters
+
+    """
+    N = YY.shape[0]
+    num_comp = max(comp)+1
+    n_param = theta.shape[0]
+
+    # Sort the parameters in model and noise paramaters
+    model_params = theta[range(num_comp)]
+    noise_params = theta[num_comp:]
+
+    # Calculate iV and iVr via Matrix inversion lemma.
+    iS = Noise.inverse(noise_params)
+    G  = exp(model_params[comp])
+    iV, iVr, ldet = compute_iVr(Z, G, iS, X)
+
+    # Computation of (restricted) likelihood
+    B = YY @ iVr
+    llik = -num_var / 2 * ldet - 0.5 * einsum('ii->',B) # trace B
+    if X is not None:
+        # P/2 log(det(X'V^-1*X))
+        llik -= num_var * sum(log(diag(cholesky(X.T @ iV @X)))) #
+
+    # If no derivative - exit here
+    if return_deriv == 0:
+        return (-llik,) # Return as tuple for consistency
+
+    # Calculate the first derivative
+    iVZ  = []
+    # Get the quantity iVdV = inv(V)dVdtheta for model parameters
+    for i,th in enumerate(model_params):
+        iVZ.append(iVr @ Z[:,comp==i])
+    # Get iVdV for Noise parameters
+    for j,th in enumerate(noise_params):
+        dVdtheta = Noise.derivative(noise_params,j)
+        if type(dVdtheta) is np.float64:
+            iVZ.append(iVr * dVdtheta)
+        else:
+            iVZ.append(iVr @ dVdtheta)
+
+    # Based on iVdV we can get he first derivative
+    # Last term is
+    #     0.5 trace(Y.T @ iVr @ dV @ iVr @ Y)
+    #  =  0.5 trace(iVZ @ iVZ' @ Y @ Y.T )
+    dLdtheta = np.zeros((n_param,))
+
+    for i,th in enumerate(theta):
+        if i < model_params.shape[0]:
+            dLdtheta[i]= -exp(th)/2 * (num_var * einsum('ij,ij->',iVZ[i],Z[:,comp==i])-einsum('ij,ij->', iVZ[i] @ Z[:,comp==i].T, B))
+        else:
+            dLdtheta[i]= -num_var / 2 * trace(iVZ[i]) + 0.5 * einsum('ij,ij->', iVZ[i], B)
+
+    # If only first derivative, exit here
+    if return_deriv == 1:
+        return (-llik, -dLdtheta)
+
+    # Calculate expected second derivative
+    d2L = np.zeros((n_param,n_param))
+    for i in range(n_param):
+        for j in range(i, n_param):
+            if (j < model_params.shape[0]):
+                d2L[i, j] = -num_var / 2 * einsum('ij,ji->',Z[:,comp==j].T @ iVZ[i], Z[:,comp==i].T @ iVZ[j]) * exp(theta[i]) * exp(theta[j])
+            elif (i < model_params.shape[0]):
+                d2L[i, j] = -num_var / 2 * einsum('ij,ji->',iVZ[i], Z[:,comp==i].T @ iVZ[j])* exp(theta[i])
+            else:
+                d2L[i, j] = -num_var / 2 * einsum('ij,ji->',iVZ[i], iVZ[j])
+            d2L[j, i] = d2L[i, j]
+
+    if return_deriv == 2:
+        return (-llik, -dLdtheta, -d2L)
+    else:
+        raise NameError('return_deriv needs to be 0, 1 or 2')
+
+def likelihood_diagYTY_ZZT(theta, Z, Y, comp, X=None, Noise=pcm.model.IndependentNoise(), return_deriv=0):
     """
     Negative Log-Likelihood of the data and derivative in respect to the parameters. This function is faster when N>>P.
 
@@ -162,119 +273,10 @@ def likelihood_diagYTY(theta, Z, Y, comp, X=None, Noise=pcm.model.IndependentNoi
     model_params = theta[range(num_comp)]
     noise_params = theta[num_comp:]
 
-
-    # Matrix inversion lemma. The following statement is the same as
-    # V   = (Z*Z'*exp(theta) + S(noiseParam));
-    # iV  = pinv(V);
-
+    # Calculate iV and iVr via Matrix inversion lemma.
     iS = Noise.inverse(noise_params)
     G  = exp(model_params[comp])
-    idx = G > (10e-10) # Find sufficiently large weights
-    iG = 1 / G[idx]
-    iS = Noise.inverse(noise_params)
-    Zr = Z[:,idx]
-    if type(iS) is np.float64: # For i.i.d noise use fast solution
-        matrixInv = np.diag(iG) + Zr.T @ Zr * iS # Inner Matrix
-        iV = (eye(N) - Zr @ solve(matrixInv, Zr.T) * iS) * iS
-    else:                       # For non-i.i.d noise use slower solution
-        matrixInv = np.diag(iG) + Zr.T @ iS @ Zr
-        iV = iS - iS @ Zr @ solve(matrixInv,Zr.T) @ iS
-
-    # For ReML, compute the modified inverse iVr
-    if X is not None:
-        iVX   = iV @ X
-        iVr   = iV - iVX @ solve(X.T @ iVX, iVX.T)
-    else:
-        iVr = iV
-
-    # Computation of (restricted) likelihood
-    YiVr = Y.T @ iVr
-    ldet = -2 * sum(log(diag(cholesky(iV)))) # Safe computation
-    llik = -num_var / 2 * ldet - 0.5 * np.einsum('ij,ji',YiVr,Y) # trace(Y.T iVr Y)
-    if X is not None:
-        # P/2 log(det(X'V^-1*X))
-        llik -= num_var * sum(log(diag(cholesky(X.T @ iV @X)))) #
-
-    # If no derivative - exit here
-    if return_deriv == 0:
-        return (-llik,) # Return as tuple for consistency
-
-    # Calculate the first derivative
-    iVdV = []
-
-    # Get the quantity iVdV = inv(V)dVdtheta for model parameters
-    for i,theta in enumerate(model_params):
-        iVdV.append(iVr @ Z[:,comp==i] @ Z[:,comp==i].T * exp(theta))
-
-    # Get iVdV for Noise parameters
-    for j,theta in enumerate(noise_params):
-        dVdtheta = Noise.derivative(noise_params,j)
-        if type(dVdtheta) is np.float64:
-            iVdV.append(iVr * dVdtheta)
-        else:
-            iVdV.append(iVr @ dVdtheta)
-
-    # Based on iVdV we can get he first derivative
-    # Last term is
-    #     0.5 trace(Y.T @ iVr @ dV @ iVr @ Y)
-    #  =  0.5 trace(Y.T @ iVdV @ iVr @ Y)
-    dLdtheta = np.zeros((n_param,))
-    for i in range(n_param):
-        dLdtheta[i] = -num_var / 2 * trace(iVdV[i]) + 0.5 * einsum('ij,ij->',Y.T @ iVdV[i], YiVr)
-
-    # If only first derivative, exit here
-    if return_deriv == 1:
-        return (-llik, -dLdtheta)
-
-    # Calculate expected second derivative
-    d2L = np.zeros((n_param,n_param))
-    for i in range(n_param):
-        for j in range(i, n_param):
-            d2L[i, j] = -num_var / 2 * einsum('ij,ij->',iVdV[i],iVdV[j])
-            d2L[j, i] = d2L[i, j]
-
-    if return_deriv == 2:
-        return (-llik, -dLdtheta, -d2L)
-    else:
-        raise NameError('return_deriv needs to be 0, 1 or 2')
-
-def likelihood_diagYTY1(theta, Z, Y, comp, X=None, Noise=pcm.model.IndependentNoise(), return_deriv=0):
-    N, num_var = Y.shape
-    Q = Z.shape[1]
-    num_comp = max(comp)+1
-    n_param = theta.shape[0]
-
-    # Sort the parameters in model and noise paramaters
-    model_params = theta[range(num_comp)]
-    noise_params = theta[num_comp:]
-
-
-    # Matrix inversion lemma. The following statement is the same as
-    # V   = (Z*Z'*exp(theta) + S(noiseParam));
-    # iV  = pinv(V);
-
-    iS = Noise.inverse(noise_params)
-    G  = exp(model_params[comp])
-    idx = G > (10e-10) # Find sufficiently large weights
-    iG = 1 / G[idx]
-    iS = Noise.inverse(noise_params)
-    Zr = Z[:,idx]
-    if type(iS) is np.float64: # For i.i.d noise use fast solution
-        matrixInv = np.diag(iG) + Zr.T @ Zr * iS # Inner Matrix
-        iV = (eye(N) - Zr @ solve(matrixInv, Zr.T) * iS) * iS
-        Zw = Zr * sqrt(G[idx]) # Weighted Z
-        lam,_ = eigh(Zw.T @ Zw)
-        ldet = sum(log(lam+1/iS)) - (N-sum(idx))*log(iS) # Shortcut to log-determinant
-    else:                       # For non-i.i.d noise use slower solution
-        matrixInv = np.diag(iG) + Zr.T @ iS @ Zr
-        iV = iS - iS @ Zr @ solve(matrixInv,Zr.T) @ iS
-        ldet = -2 * sum(log(diag(cholesky(iV)))) # Safe computation
-    # For ReML, compute the modified inverse iVr
-    if X is not None:
-        iVX   = iV @ X
-        iVr   = iV - iVX @ solve(X.T @ iVX, iVX.T)
-    else:
-        iVr = iV
+    iV, iVr, ldet = compute_iVr(Z, G, iS, X)
 
     # Computation of (restricted) likelihood
     YiVr = Y.T @ iVr
@@ -318,7 +320,7 @@ def likelihood_diagYTY1(theta, Z, Y, comp, X=None, Noise=pcm.model.IndependentNo
     d2L = np.zeros((n_param,n_param))
     for i in range(n_param):
         for j in range(i, n_param):
-            d2L[i, j] = -num_var / 2 * einsum('ij,ij->',iVdV[i],iVdV[j])
+            d2L[i, j] = -num_var / 2 * einsum('ij,ji->',iVdV[i],iVdV[j])
             d2L[j, i] = d2L[i, j]
 
     if return_deriv == 2:
@@ -326,7 +328,7 @@ def likelihood_diagYTY1(theta, Z, Y, comp, X=None, Noise=pcm.model.IndependentNo
     else:
         raise NameError('return_deriv needs to be 0, 1 or 2')
 
-def likelihood_diagYTY2(theta, Z, Y, comp, X=None, Noise=pcm.model.IndependentNoise(), return_deriv=0):
+def likelihood_diagYTY_ZTZ(theta, Z, Y, comp, X=None, Noise=pcm.model.IndependentNoise(), return_deriv=0):
     N, num_var = Y.shape
     Q = Z.shape[1]
     num_comp = max(comp)+1
@@ -336,39 +338,15 @@ def likelihood_diagYTY2(theta, Z, Y, comp, X=None, Noise=pcm.model.IndependentNo
     model_params = theta[range(num_comp)]
     noise_params = theta[num_comp:]
 
-
-    # Matrix inversion lemma. The following statement is the same as
-    # V   = (Z*Z'*exp(theta) + S(noiseParam));
-    # iV  = pinv(V);
-
+    # Calculate iV and iVr via Matrix inversion lemma.
     iS = Noise.inverse(noise_params)
     G  = exp(model_params[comp])
-    idx = G > (10e-10) # Find sufficiently large weights
-    iG = 1 / G[idx]
-    iS = Noise.inverse(noise_params)
-    Zr = Z[:,idx]
-    if type(iS) is np.float64: # For i.i.d noise use fast solution
-        matrixInv = np.diag(iG) + Zr.T @ Zr * iS # Inner Matrix
-        iV = (eye(N) - Zr @ solve(matrixInv, Zr.T) * iS) * iS
-        Zw = Zr * sqrt(G[idx]) # Weighted Z
-        lam,_ = eigh(Zw.T @ Zw)
-        ldet = sum(log(lam+1/iS)) - (N-sum(idx))*log(iS) # Shortcut to log-determinant
-    else:                       # For non-i.i.d noise use slower solution
-        matrixInv = np.diag(iG) + Zr.T @ iS @ Zr
-        iV = iS - iS @ Zr @ solve(matrixInv,Zr.T) @ iS
-        ldet = -2 * sum(log(diag(cholesky(iV)))) # Safe computation
-    # For ReML, compute the modified inverse iVr
-    if X is not None:
-        iVX   = iV @ X
-        iVr   = iV - iVX @ solve(X.T @ iVX, iVX.T)
-    else:
-        iVr = iV
+    iV, iVr, ldet = compute_iVr(Z, G, iS, X)
 
     # Computation of (restricted) likelihood
     YiVr = Y.T @ iVr
     llik = -num_var / 2 * ldet - 0.5 * np.einsum('ij,ji',YiVr,Y) # trace(Y.T iVr Y)
-    if X is not None:
-        # P/2 log(det(X'V^-1*X))
+    if X is not None:         # P/2 log(det(X'V^-1*X))
         llik -= num_var * sum(log(diag(cholesky(X.T @ iV @X)))) #
 
     # If no derivative - exit here
@@ -421,7 +399,6 @@ def likelihood_diagYTY2(theta, Z, Y, comp, X=None, Noise=pcm.model.IndependentNo
         return (-llik, -dLdtheta, -d2L)
     else:
         raise NameError('return_deriv needs to be 0, 1 or 2')
-
 
 class RidgeDiag:
     """

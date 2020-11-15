@@ -23,13 +23,21 @@ from sklearn.metrics import make_scorer
 import time
 from test_regression_performance import r2_score, method_compare, pcm_performance, likelihood_compare
 
-
 # class TestInference(unittest.TestCase):
 TL = pd.DataFrame()
 comp  = np.array([0,0,0,1,1,1,2,2]) # 20 regressors in 4 groups
 Q = comp.shape[0]
-theta = np.array([0.0,-1e20,-1e20,1.0]) # Theta's for simulation
-P = 1
+theta = np.array([-1,-2,0.5,1.2]) # Theta's for simulation
+P = 10
 N = 500
-D = likelihood_compare(comp, theta, P = P, N = N, likefcn=['YTY','YTY1','YTY2'],num_sim=5)
+Y = np.random.normal(0,1,(N,P))
+YY = Y @ Y.T
+Z = np.random.normal(0,1,(N,Q))
+X = None
+
+l1,dl1,ddl1 = pcm.regression.likelihood_diagYYT_ZZT(theta, Z , YY, P , comp, X,return_deriv=2)
+l2,dl2,ddl2 = pcm.regression.likelihood_diagYYT_ZTZ(theta, Z , YY, P , comp, X,return_deriv=2)
+l3,dl3,ddl3 = pcm.regression.likelihood_diagYTY_ZZT(theta, Z , Y, comp, X,return_deriv=2)
+l4,dl4,ddl4 = pcm.regression.likelihood_diagYTY_ZTZ(theta, Z , Y, comp, X,return_deriv=2)
+
 pass

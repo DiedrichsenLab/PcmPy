@@ -101,18 +101,8 @@ def newton(theta0, lossfcn, max_iter=80, thres= 1e-4, hess_reg=1e-4,
                 raise(NameError('Bad starting values - failed likelihood'))
             else:
                 nl[k]=np.Inf
-        #except: # Catch errors based on invalid parameter settings
-        #if any(strcmp(ME.identifier,CATCHEXP))
-        #    if (k==1)
-        #        error('bad initial values for theta');
-        #    else
-        #        nl(k)=inf;         % Set new likelihood to -inf: take a step #back
-        #    end;
-        #else
-        #    ME.rethrow;
-        #end;
         # Safety check if negative likelihood decreased
-        if (k>0 and (nl[k] - nl[k-1])>1e-16):
+        if (k>0 and (nl[k] - nl[k-1])>1e-16) or np.isnan(nl[k]):
             hess_reg = hess_reg * 10 # Increase regularisation
             if verbose == 2:
                 print('Step back. Regularisation:',hess_reg)

@@ -434,11 +434,20 @@ class RidgeDiag:
         """
         Z, X = self.add_intercept(Z, X)
         N, P = Y.shape
+        N1, Q = Z.shape
+        num_comp = max(self.components)+1
+
+        if (N != N1):
+            raise NameError('Y and Z need to have some shape[0]')
         if like_fcn == 'auto':
-            if N > 7 * P:  # This is likely a crude approximation
-                like_fcn = 'YTY'
-            else:
+            if N < 1.5 * P:
                 like_fcn = 'YYT'
+            else:
+                like_fcn = 'YTY'
+            if Q/num_comp < N/2:
+                like_fcn += '_ZTZ'
+            else:
+                like_fcn += '_ZZT'
 
         if like_fcn == 'YYT_ZZT':
             YY = Y @ Y.T
@@ -451,7 +460,7 @@ class RidgeDiag:
         elif like_fcn == 'YTY_ZTZ':
             fcn = lambda x: likelihood_diagYTY_ZTZ(x, Z, Y, self.components, X, self.noise_model, return_deriv=2)
         else:
-            raise NameError('like_fcn needs to be auto, YYT, or YTY')
+            raise NameError('like_fcn needs to be auto, YYT_ZZT,....')
         self.theta_, self.trainLogLike_, self.optim_info = pcm.optimize.newton(self.theta0_, fcn, **optim_param)
         return self
 
@@ -504,5 +513,3 @@ class RidgeDiag:
                 X = np.c_[X - np.mean(X,axis=0),np.ones((N,))]
             Z = Z - np.mean(Z,axis=0)
         return Z, X
-
-

@@ -21,29 +21,11 @@ from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import make_scorer
 import time
-from test_regression_performance import r2_score, method_compare, pcm_performance, likelihood_compare
+from test_regression_performance import r2_score, method_compare, pcm_performance, likelihood_compare, RidgeScaler
 
 # class TestInference(unittest.TestCase):
-TL = pd.DataFrame()
-comp  = np.array([0,0,0,1,1,1,2,2]) # 20 regressors in 4 groups
-Q = comp.shape[0]
-theta = np.array([-1,-2,-1e20,0.0]) # Theta's for simulation
-theta0 = np.array([0,0,0.0,0]) # Theta's for simulation
-P = 10
-N = 500
-Y = np.random.normal(0,1,(N,P))
-Z = np.random.normal(0,1,(N,Q))
-X = None
-YY = Y@Y.T
-l1,dl1,ddl1 = pcm.regression.likelihood_diagYYT_ZZT(theta0, Z , YY, P , comp, X,return_deriv=2)
-l2,dl2,ddl2 = pcm.regression.likelihood_diagYYT_ZTZ(theta0, Z , YY, P , comp, X,return_deriv=2)
-l3,dl3,ddl3 = pcm.regression.likelihood_diagYTY_ZZT(theta0, Z , Y, comp, X,return_deriv=2)
-l4,dl4,ddl4 = pcm.regression.likelihood_diagYTY_ZTZ(theta0, Z , Y, comp, X,return_deriv=2)
+comp = np.array([0,0,0,1,1,1,2,2,2,2,2],dtype= int)
 
-optim_param = {'hess_reg':1e-9,'regularization':'sEig'}
-M1 = pcm.regression.RidgeDiag(comp, fit_intercept = False)
-M1.optimize_regularization(Z,Y,like_fcn='YYT_ZZT',optim_param=optim_param)
-M2 = pcm.regression.RidgeDiag(comp, fit_intercept = False)
-M2.optimize_regularization(Z,Y,like_fcn='YYT_ZTZ',optim_param=optim_param)
-
+M = RidgeScaler(comp)
+a= M.get_param_grid(-3,3,7)
 pass

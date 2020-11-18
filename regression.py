@@ -9,12 +9,27 @@ import PcmPy as pcm
 
 def compute_iVr(Z, G, iS, X = None):
     """
-    This function solves:
-    a) iV   = inv(Z*G*Z' + S);
-    b) iVr  = iV - iV * X inv(X' * iV *X) * X' *iV
-    c) ldet = log(det(iV))
-    Quickly, using the matrix inversion lemma
+    Fast inverse of V matrix using the matrix inversion lemma
+
+    Parameters:
+        Z (2d-np.array)
+            Design matrix for random effects NxQ
+        G  (1d or 2d-np.array)
+            Q x Q Matrix: variance of random effect
+        iS (scalar or NxN matrix)
+            Inverse variance of noise matrix
+        X (2d-np.array)
+            Design matrix for random effects
+    Returns:
+        iV  (2d-np.array)
+            inv(Z*G*Z' + S);
+        iVr (2d-np.array)
+            iV - iV * X inv(X' * iV *X) * X' *iV
+        ldet (scalar)
+            log(det(iV))
+
     """
+
     N = Z.shape[0]
     idx = G > (10e-10) # Find sufficiently large weights
     iG = 1 / G[idx]
@@ -405,32 +420,47 @@ class RidgeDiag:
         Class for Linear Regression with Tikhonov (L2) regularization.
         The regularization matrix for this class is diagnonal, with groups
         of elements along the diagonal sharing the same Regularisation factor.
+
     """
-    def __init__(self, components, theta0 = None, fit_intercept =  True, noise_model = pcm.model.IndependentNoise(),like_fcn = None):
+
+    def __init__(self, components, theta0 = None, fit_intercept =  True, noise_model = pcm.model.IndependentNoise()):
+        """
+        Constructor
+            Parameters:
+                components (1d-array like)
+                    Indicator to which column of design matrix belongs to which group
+                theta0 (1d  np.array)
+                    Vector of of starting values for optimization
+                fit_intercept (Boolean)
+                    Should intercept be added to fixed effects (Dafault: true)
+                noise_model (pcm.model.NoiseModel)
+                    Model specifying the full-rank noise effects
+
+        """
         self.components = components
         self.noise_model = noise_model
         self.n_param = max(components)+1+self.noise_model.n_param
         self.noise_idx = np.arange(max(components)+1,self.n_param)
         self.theta0_ = np.zeros((self.n_param,)) # Empty theta0
-        self.theta_  = np.zeros((self.n_param,))
+        self.theta_  = None
         self.fit_intercept = fit_intercept
 
     def optimize_regularization(self, Z , Y, X = None, optim_param = {}, like_fcn = 'auto'):
         """
-        Optimizar the
+        Optimizes the hyper parameters (regularisation) of the regression mode
         Parameters:
             Z (2d-np.array)
                 Design matrix for random effects NxQ
             Y  (2d-np.array)
                 NxP Matrix of data
-            comp (1d-np.array or list)
-                Q-length: Indicates for each column of Z, which theta will be used for the weighting
             X (np.array)
                 Fixed effects design matrix - will be accounted for by ReML
-            Noise (pcm.Noisemodel)
-                Pcm-noise mode to model block-effects (default: Indentity)
+            optim_parameters (dictionary of parameters)
+                parameters for the optimization routine
         Returns:
-            theta  (1d-np.array)
+            self
+                Model with fitted parameters
+
         """
         Z, X = self.add_intercept(Z, X)
         N, P = Y.shape
@@ -465,6 +495,22 @@ class RidgeDiag:
         return self
 
     def fit(self, Z ,Y , X = None):
+        """
+        Estimates the regression parameters, given a specific regularization
+        Parameters:
+            Z (2d-np.array)
+                Design matrix for random effects NxQ
+            Y  (2d-np.array)
+                NxP Matrix of data
+            X (np.array)
+                Fixed effects design matrix - will be accounted for by ReML
+        Returns:
+            self
+                Model with fitted parameters
+
+        """
+        if (self.theta is None):
+            raise NameError('Regularisation parameters (theta) need to be optimized with optimize_regulularization or set')
         N = Z.shape[0]
         Z, X = self.add_intercept(Z, X)
         # Get the inverse of the covariance matrix
@@ -491,6 +537,22 @@ class RidgeDiag:
         return self
 
     def predict(self, Z, X = None):
+        """
+        Predicts new data based on a fitted model
+        Parameters:
+            Z (2d-np.array)
+                Design matrix for random effects NxQ
+            Y  (2d-np.array)
+                NxP Matrix of data
+            X (np.array)
+                Fixed effects design matrix - will be accounted for by ReML
+        Returns:
+            self
+                Model with fitted parameters
+
+        """
+        if  not hasattr(self,'coef_'):
+            raise NameError('Model needs to first be fitted')
         self.add_intercept(Z, X)
         if (X is None):
             Yp = Z @ self.coef_

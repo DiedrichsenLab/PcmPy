@@ -8,11 +8,11 @@ from PcmPy.dataset import Dataset
 from PcmPy.sim import make_design
 from PcmPy.sim import make_dataset
 # Modules
-import PcmPy.sim as sim
-import PcmPy.matrix as matrix
-import PcmPy.inference as inference
-import PcmPy.optimize as optimize
-import PcmPy.model as model
-import PcmPy.util as util
-import PcmPy.vis as vis
-import PcmPy.regression as regression
+from PcmPy import sim as sim
+from PcmPy import matrix as matrix
+from PcmPy import inference as inference
+from PcmPy import optimize as optimize
+from PcmPy import model as model
+from PcmPy import util as util
+from PcmPy import vis as vis
+from PcmPy import regression as regression

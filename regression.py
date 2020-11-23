@@ -509,7 +509,7 @@ class RidgeDiag:
                 Model with fitted parameters
 
         """
-        if (self.theta is None):
+        if (self.theta_ is None):
             raise NameError('Regularisation parameters (theta) need to be optimized with optimize_regulularization or set')
         N = Z.shape[0]
         Z, X = self.add_intercept(Z, X)

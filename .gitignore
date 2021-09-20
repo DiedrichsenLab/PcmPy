@@ -110,6 +110,7 @@ venv.bak/
 
 # Sphinx documentation
 /docs/build/
+/sphinxext/
 
 # mypy
 .mypy_cache/
@@ -121,3 +122,4 @@ dmypy.json
 
 # Mac OSX files 
 .DS_Store
+.vscode/

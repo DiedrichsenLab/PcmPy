@@ -108,8 +108,8 @@ venv.bak/
 # Rope project settings
 .ropeproject
 
-# mkdocs documentation
-/site
+# Sphinx documentation
+/docs/build/
 
 # mypy
 .mypy_cache/
@@ -118,8 +118,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-.DS_Store
-docs/.DS_Store
-docs/source/.DS_Store
-.DS_Store
+
+# Mac OSX files 
 .DS_Store

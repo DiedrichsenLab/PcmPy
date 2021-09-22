@@ -226,13 +226,18 @@ class CorrelationModel(Model):
         # Now add the across-conditions blocks to the derivatives: 
         for j in range(self.n_wparam):
             dG1 = dG_dTheta[np.ix_([p1[j]],i1,i1)]
-            dC1 = 0.5 * 1/C * r * G[np.ix_(i2,i2)] * dG1[0,:,:]
-            dC1[C==0]=0
-            dG_dTheta[np.ix_([p1[j]],i1,i2)] = dC1
-            dG_dTheta[np.ix_([p1[j]],i2,i1)]= dC1.T
+            dG1 = dG1[0,:,:]
+            G1 = G[np.ix_(i1,i1)]
             dG2 = dG_dTheta[np.ix_([p2[j]],i2,i2)]
-            dC2 = 0.5 * 1/C * r * G[np.ix_(i1,i1)] * dG2[0,:,:]
-            dC2[C==0]=0
+            dG2 = dG2[0,:,:]
+            G2 = G[np.ix_(i2,i2)]
+            dC1 = np.zeros(dG1.shape)
+            dC2 = np.zeros(dG2.shape)
+            ind = C!=0 
+            dC1[ind] = 0.5 * 1/C[ind] * r * G2[ind] * dG1[ind] 
+            dC2[ind] = 0.5 * 1/C[ind] * r * G1[ind] * dG2[ind]
+            dG_dTheta[np.ix_([p1[j]],i1,i2)] = dC1
+            dG_dTheta[np.ix_([p1[j]],i2,i1)]=  dC1.T
             dG_dTheta[np.ix_([p2[j]],i1,i2)] = dC2
             dG_dTheta[np.ix_([p2[j]],i2,i1)] = dC2.T
 

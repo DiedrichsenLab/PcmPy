@@ -128,8 +128,8 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
             epsilon = noise_chol_trial @ epsilon
         # Assemble the data set
         data = Zcond @ true_U * np.sqrt(signal) + epsilon
-        dataset = dataset.Dataset(data, obs_descriptors=obs_des, descriptors=des)
-        dataset_list.append(dataset)
+        datas = dataset.Dataset(data, obs_descriptors=obs_des, descriptors=des)
+        dataset_list.append(datas)
     return dataset_list
 
 def make_signal(G, n_channel,make_exact=False, chol_channel=None):

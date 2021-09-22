@@ -1,5 +1,5 @@
 import numpy as np
-from numpy import exp, eye, log
+from numpy import exp, eye, log, sqrt
 from numpy.linalg import solve, eigh, cholesky, pinv
 import PcmPy as pcm
 
@@ -19,7 +19,7 @@ class Model:
     def set_theta0(self,G_hat):
         pass
 
-class ModelFeature(Model):
+class FeatureModel(Model):
     """
     Feature model
     A = sum (theta_i *  Ac_i)
@@ -65,14 +65,14 @@ class ModelFeature(Model):
             dG_dTheta[i,:,:] =  dA + dA.transpose()
         return (G,dG_dTheta)
 
-class ModelComponent(Model):
+class ComponentModel(Model):
     """
     Component model class
     G = sum (exp(theta_i) * Gc_i)
     """
     def __init__(self,name,Gc):
         """
-        Creator for ModelComponent class
+        Creator for ComponentModel class
 
         Parameters:
             name (string)
@@ -126,7 +126,128 @@ class ModelComponent(Model):
             h0[h0<10e-4] = 10e-4
             self.theta0 = log(h0.reshape(-1,))
 
-class ModelFixed(Model):
+class CorrelationModel(Model):
+    """
+    Correlation model class
+    for a fixed or flexible correlation model
+    it models the correlation between different items 
+    across 2 experimental conditions.
+    % In this paramaterization: 
+    % var(x) = exp(theta_x) 
+    % var(y) = exp(theta_y) 
+    % cov(x,y) = sqrt(var(x)*var(y))* r 
+    % r = (exp(2.*theta_z)-1)./(exp(2.*theta_z)+1);  % Fisher inverse 
+    """
+
+    def __init__(self,name,within_cov = None,num_items=1, 
+                corr=None,cond_effect = False):
+        """
+        Creator for CorrelationModel class
+
+        Parameters:
+            name (string)
+                name of the particular model for indentification
+            with_cov (numpy.ndarray or None)
+                how to model within condition cov-ariance between items
+            num_items (int):
+                Number of items within each condition
+        Returns:
+            Model object
+        """
+        Model.__init__(self,name)
+        self.num_items = num_items
+        self.num_cond = 2 # Current default 
+        self.cond_effect = cond_effect
+
+        self.cond_vec = np.kron(np.arange(self.num_cond), np.ones((self.num_items,)))
+        self.item_vec = np.kron(np.ones((self.num_cond,)),np.arange(self.num_items))
+        K = self.num_cond * self.num_items
+
+        if within_cov is None:
+            self.within_cov = np.eye(num_items).reshape(1,num_items,num_items)
+        else:
+            self.within_cov = within_cov
+
+        # Initialize the Gc structure
+        self.n_cparam = self.num_cond * self.cond_effect # Number of condition effect parameters 
+        self.n_wparam = self.within_cov.shape[0] # Number of within condition parameters 
+        self.n_param = self.num_cond * self.n_wparam + self.n_cparam
+        self.Gc = np.zeros((self.n_param,K,K))
+
+        # Now add the condition effect and within condition covariance structure
+        for i in range(self.num_cond):
+            ind = np.where(self.cond_vec==i)[0]
+            if self.cond_effect:
+                self.Gc[np.ix_([i],ind,ind)] = 1
+            c = np.arange(self.n_wparam) + i * self.n_wparam + self.n_cparam
+            self.Gc[np.ix_(c,ind,ind)] = self.within_cov
+        
+        # Check if fixed or flexible correlation model 
+        self.corr = corr
+        if self.corr is None:
+            self.n_param = self.n_param + 1
+
+    def predict(self,theta):
+        """
+        Calculation of G for a correlation model
+        Args:
+            theta (numpy.ndarray):    Vector of model parameters
+        Returns:
+            G (np.ndarray)
+                2-dimensional (K,K) array of predicted second moment
+            dG_dTheta (np.ndarray)
+                3-d (n_param,K,K) array of partial matrix derivatives of G in respect to theta
+        """
+        # Determine the correlation to model 
+        if self.corr is None:
+            z = theta[-1] # Last item 
+            r = (exp(2.*z)-1)/(exp(2.*z)+1) # Fisher inverse transformation 
+        else: 
+            r = self.corr
+        
+        # Get the basic variances within conditons
+        n = self.n_wparam * self.num_cond + self.num_cond * self.cond_effect # Number of basic parameters
+        o = self.num_cond * self.cond_effect # Number of condition 
+        dG_dTheta = np.zeros((self.n_param,self.Gc.shape[1],self.Gc.shape[1]))
+        exp_theta=np.reshape(np.exp(theta[0:n]),(n,1,1)) # Bring into the right shape for broadcasting
+        dG_dTheta[0:n,:,:] = self.Gc * exp_theta  # This is also the derivative dexp(x)/dx = exp(x)
+        # Sum current G-matrix without the condition effects
+        G = dG_dTheta[o:n,:,:].sum(axis=0)
+
+        # Now determine the cross_condition block (currently only for 2 conditions)
+        i1 = np.where(self.cond_vec==0)[0]
+        i2 = np.where(self.cond_vec==1)[0]
+        p1 = np.arange(self.n_wparam) + self.n_cparam
+        p2 = p1 + self.n_wparam 
+        C = sqrt(G[np.ix_(i1,i1)] * G[np.ix_(i2,i2)]) # Maximal covariance 
+        G[np.ix_(i1,i2)] = C * r
+        G[np.ix_(i2,i1)] = C.T * r
+
+        # Now add the across-conditions blocks to the derivatives: 
+        for j in range(self.n_wparam):
+            dG1 = dG_dTheta[np.ix_([p1[j]],i1,i1)]
+            dC1 = 0.5 * 1/C * r * G[np.ix_(i2,i2)] * dG1[0,:,:]
+            dC1[C==0]=0
+            dG_dTheta[np.ix_([p1[j]],i1,i2)] = dC1
+            dG_dTheta[np.ix_([p1[j]],i2,i1)]= dC1.T
+            dG2 = dG_dTheta[np.ix_([p2[j]],i2,i2)]
+            dC2 = 0.5 * 1/C * r * G[np.ix_(i1,i1)] * dG2[0,:,:]
+            dC2[C==0]=0
+            dG_dTheta[np.ix_([p2[j]],i1,i2)] = dC2
+            dG_dTheta[np.ix_([p2[j]],i2,i1)] = dC2.T
+
+        # Now add the main  Condition effect co-variance
+        G = G+dG_dTheta[0:o,:,:].sum(axis=0)
+
+        # Add the derivative for the correlation parameter for flexible models  
+        if self.corr is None:
+            dC = C*4*exp(2*z)/(exp(2*z)+1)**2
+            dG_dTheta[np.ix_([n],i1,i2)] = dC
+            dG_dTheta[np.ix_([n],i2,i1)] = dC.T
+        return (G,dG_dTheta)
+
+
+class FixedModel(Model):
     """
     Fixed PCM with a rigid predicted G matrix and no parameters
     """
@@ -162,7 +283,7 @@ class ModelFixed(Model):
 
         return (self.G,None)
 
-class ModelFree(Model):
+class FreeModel(Model):
     """
     Free model class: Second moment matrix is 
     G = A*A', where A is a upper triangular matrix that is flexible

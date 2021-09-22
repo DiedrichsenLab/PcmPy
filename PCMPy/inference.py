@@ -20,7 +20,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
     Parameters:
         theta (np.array)
             Vector of (log-)model parameters: These include model, signal and noise parameters
-        M (pcm.Model)
+        M (PcmPy.model.Model)
             Model object with predict function
         YY (2d-np.array)
             NxN Matrix of outer product of the activity data (Y*Y')

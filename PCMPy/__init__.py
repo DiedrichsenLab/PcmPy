@@ -1,18 +1,15 @@
-# Shortcuts
+"""
+Pattern Component Modelling (PCM) toolbox for Python 
+----------------------------------------------------
+
+Documentation is available in the docstrings and online at
+https://pcm-toolbox-python.readthedocs.io
+"""
 from PcmPy.model import Model
-from PcmPy.model import ModelComponent
-from PcmPy.model import ModelFeature
-from PcmPy.model import ModelFixed
-from PcmPy.model import ModelFree
-from PcmPy.dataset import Dataset
-from PcmPy.sim import make_design
-from PcmPy.sim import make_dataset
-# Modules
-import PcmPy.sim as sim
-import PcmPy.matrix as matrix
-import PcmPy.inference as inference
-import PcmPy.optimize as optimize
-import PcmPy.model as model
-import PcmPy.util as util
-import PcmPy.vis as vis
-import PcmPy.regression as regression
+from PcmPy.model import FeatureModel
+from PcmPy.model import ComponentModel
+from PcmPy.model import FreeModel
+from PcmPy.model import CorrelationModel
+
+__all__ = ['sim', 'matrix', 'inference', 'optimize',
+           'model', 'util', 'vis', 'regression']

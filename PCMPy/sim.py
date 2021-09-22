@@ -7,12 +7,12 @@ Functions for data simulation a specific RSA-model
 @author: jdiedrichsen
 """
 
-import PcmPy as pcm
 import numpy as np
 import scipy.stats as ss
 import scipy.linalg as sl
 from scipy.spatial.distance import squareform
-
+from PcmPy import matrix
+from PcmPy import dataset
 
 def make_design(n_cond, n_part):
     """
@@ -41,7 +41,7 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
     Simulates a fMRI-style data set
 
     Args:
-        model (pcm.Model):        the model from which to generate data
+        model (PcmPy.Model):        the model from which to generate data
         theta (numpy.ndarray):    vector of parameters (one dimensional)
         cond_vec (numpy.ndarray): RSA-style model:
                                       vector of experimental conditions
@@ -69,7 +69,7 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
 
     # Make design matrix
     if (cond_vec.ndim == 1):
-        Zcond = pcm.matrix.indicator(cond_vec)
+        Zcond = matrix.indicator(cond_vec)
     elif (cond_vec.ndim == 2):
         Zcond = cond_vec
     else:
@@ -128,7 +128,7 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
             epsilon = noise_chol_trial @ epsilon
         # Assemble the data set
         data = Zcond @ true_U * np.sqrt(signal) + epsilon
-        dataset = pcm.Dataset(data, obs_descriptors=obs_des, descriptors=des)
+        dataset = dataset.Dataset(data, obs_descriptors=obs_des, descriptors=des)
         dataset_list.append(dataset)
     return dataset_list
 

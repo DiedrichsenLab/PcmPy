@@ -36,29 +36,41 @@ def make_design(n_cond, n_part):
 
 
 def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
-                signal=1, noise=1, signal_cov_channel=None, noise_cov_channel=None,noise_cov_trial=None, use_exact_signal=False, use_same_signal=False):
+                signal=1, noise=1, signal_cov_channel=None, noise_cov_channel=None,noise_cov_trial=None, use_exact_signal=False, use_same_signal=False,
+                part_vec = None):
     """
     Simulates a fMRI-style data set
 
     Args:
-        model (PcmPy.Model):        the model from which to generate data
-        theta (numpy.ndarray):    vector of parameters (one dimensional)
-        cond_vec (numpy.ndarray): RSA-style model:
-                                      vector of experimental conditions
-                                  Encoding-style:
-                                      design matrix (n_obs x n_cond)
-        n_channel (int):          Number of channels (default = 30)
-        n_sim (int):              Number of simulation with the same signal
-                                      (default = 1)
-        signal (float):            Signal variance (multiplied by predicted G)
-        signal_cov_channel(numpy.ndarray): Covariance matrix of signal across channels
-        noise (float):             Noise variance
-        noise_cov_channel(numpy.ndarray): Covariance matrix of noise (default = identity)
-        noise_cov_trial(numpy.ndarray): Covariance matrix of noise across trials
-        use_exact_signal (bool):  Makes the signal so that G is exactly as
-                                  specified (default: False)
-        use_same_signal (bool):   Uses the same signal for all simulation
-                                  (default: False)
+        model (PcmPy.Model):
+            the model from which to generate data
+        theta (numpy.ndarray):
+            vector of parameters (one dimensional)
+        cond_vec (numpy.ndarray): 
+            RSA-style model:
+                vector of experimental conditions
+            Encoding-style:
+            design matrix (n_obs x n_cond)
+        n_channel (int):
+            Number of channels (default = 30)
+        n_sim (int):
+            Number of simulation with the same signal (default = 1)
+        signal (float):
+            Signal variance (multiplied by predicted G)
+        signal_cov_channel(numpy.ndarray):
+            Covariance matrix of signal across channels
+        noise (float):
+            Noise variance
+        noise_cov_channel(numpy.ndarray):
+            Covariance matrix of noise (default = identity)
+        noise_cov_trial(numpy.ndarray):
+            Covariance matrix of noise across trials
+        use_exact_signal (bool):
+            Makes the signal so that G is exactly as specified (default: False)
+        use_same_signal (bool):
+            Uses the same signal for all simulation (default: False)
+        part_vec (np.array): 
+            Optional partition that is added to the data set obs_descriptors 
     Returns:
         data (list):              List of pyrsa.Dataset with obs_descriptors
     """
@@ -110,7 +122,7 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
     # Generate noise as a matrix normal, independent across partitions
     # If noise covariance structure is given, it is assumed that it's the same
     # across different partitions
-    obs_des = {"cond_vec": cond_vec}
+    obs_des = {"cond_vec": cond_vec,"part_vec": part_vec}
     des = {"signal": signal, "noise": noise,
            "model": model.name, "theta": theta}
     dataset_list = []

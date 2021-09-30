@@ -18,6 +18,7 @@ Note that the toolbox does not provide functions to extract the required data fr
    visualisation.rst
    inference.rst
    regression.rst
+   examples.rst
    math.rst
    reference.rst
    literature_cited.rst

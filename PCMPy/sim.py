@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Functions for data simulation a specific RSA-model
-    make_design: creates design and condition vectors for fMRI design
-    make_dataset: creates a data set based on an RDM model
+Functions for data simulation from PCM-models 
 @author: jdiedrichsen
 """
 
@@ -47,10 +45,8 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
         theta (numpy.ndarray):
             vector of parameters (one dimensional)
         cond_vec (numpy.ndarray): 
-            RSA-style model:
-                vector of experimental conditions
-            Encoding-style:
-            design matrix (n_obs x n_cond)
+            RSA-style model: vector of experimental conditions
+            Encoding-style: design matrix (n_obs x n_cond)
         n_channel (int):
             Number of channels (default = 30)
         n_sim (int):

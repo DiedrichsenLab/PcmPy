@@ -95,11 +95,11 @@ The demo ``demo_finger.ipynb`` provides a full example how to use group crossval
 
    # Build models from the second momement matrices
    M = []
-   M.append(pcm.ModelFixed('null',np.eye(5)))
-   M.append(pcm.ModelFixed('muscle',modelM[0]))
-   M.append(pcm.ModelFixed('natural',modelM[1]))
-   M.append(pcm.ModelComponent('muscle+nat',[modelM[0],modelM[1]]))
-   M.append(pcm.ModelFree('ceil',5)) # Noise ceiling model
+   M.append(pcm.FixedModel('null',np.eye(5)))
+   M.append(pcm.FixedModel('muscle',modelM[0]))
+   M.append(pcm.FixedModel('natural',modelM[1]))
+   M.append(pcm.ComponentModel('muscle+nat',[modelM[0],modelM[1]]))
+   M.append(pcm.FreeModel('ceil',5)) # Noise ceiling model
 
    # Fit the model in to the full group, using a individual scaling parameter for each
    T_gr, theta = pcm.inference.fit_model_group(Y, M, fit_scale=True)

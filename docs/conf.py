@@ -12,7 +12,7 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../PCMPy'))
+sys.path.insert(0, os.path.abspath('../PCMPy'))
 
 # -- Project information -----------------------------------------------------
 
@@ -34,7 +34,7 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.napoleon',
               'sphinx.ext.intersphinx',
               'sphinx.ext.doctest',
-              'sphinx.ext.inheritance_diagram']
+              'nbsphinx']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -44,6 +44,8 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
+# Make sure that class constructors are documented 
+autoclass_content = 'both'
 
 # -- Options for HTML output -------------------------------------------------
 

@@ -5,15 +5,23 @@ import PcmPy as pcm
 
 class Model:
     """
-    Abstract PCM Model Class
+        Abstract PCM Model Class
     """
     def __init__(self,name):
+        """
+
+        Args:
+            name ([str]): Name of the the model 
+        """
         self.name = name
         self.n_param = 0
         self.algorithm = 'newton' # Default optimization algorithm
         self.theta0 = np.zeros((0,)) # Empty theta0
 
     def predict(self,theta):
+        """
+        Prediction function: Needs to be implemented 
+        """
         raise(NameError("caluclate G needs to be implemented"))
 
     def set_theta0(self,G_hat):
@@ -21,17 +29,18 @@ class Model:
 
 class FeatureModel(Model):
     """
-    Feature model
+    Feature model: 
     A = sum (theta_i *  Ac_i)
     G = A*A'
     """
     def __init__(self,name,Ac):
         """
-        Creator for ModelFeature class
 
         Args:
-            name (string):     name of the particular model for indentification
-            Ac (numpy.ndarray): 3-dimensional array with components of A
+            name (string):
+                name of the particular model for indentification
+            Ac (numpy.ndarray):
+                3-dimensional array with components of A
         Returns:
             Model object
         """
@@ -72,7 +81,6 @@ class ComponentModel(Model):
     """
     def __init__(self,name,Gc):
         """
-        Creator for ComponentModel class
 
         Parameters:
             name (string)
@@ -128,21 +136,21 @@ class ComponentModel(Model):
 
 class CorrelationModel(Model):
     """
-    Correlation model class
-    for a fixed or flexible correlation model
-    it models the correlation between different items 
-    across 2 experimental conditions.
-    % In this paramaterization: 
-    % var(x) = exp(theta_x) 
-    % var(y) = exp(theta_y) 
-    % cov(x,y) = sqrt(var(x)*var(y))* r 
-    % r = (exp(2.*theta_z)-1)./(exp(2.*theta_z)+1);  % Fisher inverse 
+    Correlation model class for a fixed or flexible correlation model
+    it models the correlation between different items  across 2 experimental conditions.
+    In this paramaterization: 
+    var(x) = exp(theta_x) 
+
+    var(y) = exp(theta_y) 
+
+    cov(x,y) = sqrt(var(x)*var(y))* r 
+
+    r = (exp(2*theta_z)-1)/(exp(2*theta_z)+1);  % Fisher inverse 
     """
 
     def __init__(self,name,within_cov = None,num_items=1, 
                 corr=None,cond_effect = False):
         """
-        Creator for CorrelationModel class
 
         Parameters:
             name (string)
@@ -258,7 +266,6 @@ class FixedModel(Model):
     """
     def __init__(self,name,G):
         """
-        Creator for ModelFixed class
 
         Parameters:
             name (string)
@@ -295,7 +302,6 @@ class FreeModel(Model):
     """
     def __init__(self,name,n_cond):
         """
-        Creator for ModelFree class
 
         Parameters:
             name (string)
@@ -366,24 +372,60 @@ class NoiseModel:
         raise(NameError("get_theta0 needs to be implemented"))
 
 class IndependentNoise(NoiseModel):
+    """
+    Simple Indepdennt noise model (i.i.d)
+    the only parameter is the noise variance 
+    """
     def __init__(self):
-        """
-        Creator for Noise model
-        """
         NoiseModel.__init__(self)
         self.n_param = 1
         theta0 = 0
 
     def predict(self, theta):
+        """
+        Prediction function returns S - predicted noise covariance matrix 
+
+        Args:
+            theta ([np.array]): Array like of noiseparamters 
+
+        Returns:
+            [s]: Noise variance (for simplicity as a scalar)
+        """
         return np.exp(theta[0])
 
     def inverse(self, theta):
+        """
+        Returns S^{-1}
+
+        Args:
+            theta ([np.array]): Array like of noiseparamters 
+
+        Returns:
+            [s]: Inverse of noise variance (scalar)
+        """
         return 1./np.exp(theta[0])
 
     def derivative(self, theta, n=0):
+        """
+        Returns the derivative of S in respect to it's own parameters 
+
+        Args:
+            theta ([np.array]): Array like of noiseparamters 
+            n (int, optional): Number of parameter to get derivate for. Defaults to 0.
+
+        Returns:
+            [d]: [derivative of S in respective to theta]
+        """
         return np.exp(theta[0])
 
     def set_theta0(self, Y, Z, X=None):
+        """Makes an initial guess on noise paramters 
+
+        Args:
+            Y ([np.array]): Data 
+            Z ([np.array]): Random Effects matrix 
+            X ([np.array], optional): [description]. Fixed effects matrix.
+        """
         N, P = Y.shape
         if X is not None:
             Z = np.c_[Z, X]
@@ -394,9 +436,16 @@ class IndependentNoise(NoiseModel):
         self.theta0 = np.array([log(noise0)])
 
 class BlockPlusIndepNoise(NoiseModel):
+    """
+    This noise model uses correlated noise per partition (block)
+    plus independent noise per observation 
+    For beta-values from an fMRI analysis, this is an adequate model
+    """
+
     def __init__(self,part_vec):
         """
-        Creator for ModelFixed class
+        Args:
+            part_vec ([np.array]): vector indicating the block membership for each observation
         """
         NoiseModel.__init__(self)
         self.n_param = 2
@@ -407,10 +456,29 @@ class BlockPlusIndepNoise(NoiseModel):
         self.BBT = self.B @ self.B.T
 
     def predict(self, theta):
+        """
+        Prediction function returns S - predicted noise covariance matrix 
+
+        Args:
+            theta ([np.array]): Array like of noiseparamters 
+
+        Returns:
+            [S]: Noise covariance matrix 
+        """
+
         S = self.BBT * exp(theta[0]) + eye(self.N) * exp(theta[1])
         return S
 
     def inverse(self, theta):
+        """
+        Returns S^{-1}
+
+        Args:
+            theta ([np.array]): Array like of noiseparamters 
+
+        Returns:
+            [iS]: Inverse of noise covariance
+        """
         sb = exp(theta[0]) # Block parameter
         se = exp(theta[1])
         A = eye(self.M) * se / sb + self.B.T @ self.B
@@ -418,6 +486,16 @@ class BlockPlusIndepNoise(NoiseModel):
         return S
 
     def derivative(self, theta,n=0):
+        """
+        Returns the derivative of S in respect to it's own parameters 
+
+        Args:
+            theta ([np.array]): Array like of noiseparamters 
+            n (int, optional): Number of parameter to get derivate for. Defaults to 0.
+
+        Returns:
+            [d]: [derivative of S in respective to theta]
+        """
         if n==0:
             return self.BBT * np.exp(theta[0])
         elif n==1:

@@ -24,7 +24,7 @@ class TestSimulation(unittest.TestCase):
 
     def test_make_data(self):
         cond_vec,part_vec = pcm.sim.make_design(4,8)
-        M = pcm.ModelFixed("null",np.zeros((4,4)))
+        M = pcm.FixedModel("null",np.zeros((4,4)))
         D = pcm.sim.make_dataset(M,None,cond_vec,n_channel=40)
         self.assertEqual(D[0].measurements.shape[0],32)
         self.assertEqual(D[0].measurements.shape[1],40)

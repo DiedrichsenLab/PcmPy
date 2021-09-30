@@ -18,9 +18,9 @@ Models are a specific class, inherited from the class ``Model``. To define a fix
 
 .. sourcecode:: python
 
-    M1 = pcm.ModelFixed('null',np.eye(5))    # Makes a Null model
-    M2 = pcm.ModelFixed('muscle',modelM[0])  # Makes the muscle model
-    M3 = pcm.ModelFixed('natural',modelM[1]) # Makes the natural stats model
+    M1 = pcm.FixedModel('null',np.eye(5))    # Makes a Null model
+    M2 = pcm.FixedModel('muscle',modelM[0])  # Makes the muscle model
+    M3 = pcm.FixedModel('natural',modelM[1]) # Makes the natural stats model
     M = [M1, M2, M3] # Join the models for fitting in list
 
 When evaluating the likelihood of a data set under the prediction, the pcm toolbox still needs to estimate the scaling factor and the noise variance, so even in the case of fixed models, an iterative maximization of the likelihood is required (see below).
@@ -48,7 +48,7 @@ In the example `pcm_recipe_finger`, we have two fixed models, the Muscle and the
 
 .. sourcecode:: python
 
-    MC = pcm.ModelComponent('muscle+nat',[modelM[0],modelM[1]])
+    MC = pcm.ComponentModel('muscle+nat',[modelM[0],modelM[1]])
 
 Feature models
 --------------
@@ -154,13 +154,13 @@ In estimating an unconstrained :math:`\mathbf{G}`, it is important to ensure tha
 
 Example
 ^^^^^^^
-To set up a free model, simple create a new model of type ``ModelFree``.
+To set up a free model, simple create a new model of type ``FreeModel``.
 
 .. sourcecode:: python
 
-    M5 = pcm.ModelFree('ceil',n_cond)
+    M5 = pcm.FreeModel('ceil',n_cond)
 
-If the number of conditions is very large, the crossvalidated estimation of the noise ceiling model can get rather slow. For a quick and approximate noise ceiling, you can also set the model type to ``ModelFreeDirect``. In the case, the fitting algorithms simply uses an unbiased estimate of the second moment matrix from ``pcm.util.est_G_crossval`` to determine the parameters - basically the starting values of the complete model. This will lead to slightly lower noise ceilings as compared to the full optimization, but large improvements in speed.
+If the number of conditions is very large, the crossvalidated estimation of the noise ceiling model can get rather slow. For a quick and approximate noise ceiling, you can also set the model type to ``FreeModelDirect``. In the case, the fitting algorithms simply uses an unbiased estimate of the second moment matrix from ``pcm.util.est_G_crossval`` to determine the parameters - basically the starting values of the complete model. This will lead to slightly lower noise ceilings as compared to the full optimization, but large improvements in speed.
 
 Custom model
 ------------
@@ -171,7 +171,7 @@ To define a custom model, the user needs to define a new Model class, inherited 
 
 .. sourcecode:: python
 
-    class ModelComponent(Model):
+    class ComponentModel(Model):
     # Constructor of the class
     def __init__(self,name,...):
         Model.__init__(self,name)

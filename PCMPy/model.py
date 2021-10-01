@@ -11,7 +11,7 @@ class Model:
         """
 
         Args:
-            name ([str]): Name of the the model 
+            name ([str]): Name of the the model
         """
         self.name = name
         self.n_param = 0
@@ -20,7 +20,7 @@ class Model:
 
     def predict(self,theta):
         """
-        Prediction function: Needs to be implemented 
+        Prediction function: Needs to be implemented
         """
         raise(NameError("caluclate G needs to be implemented"))
 
@@ -29,7 +29,7 @@ class Model:
 
 class FeatureModel(Model):
     """
-    Feature model: 
+    Feature model:
     A = sum (theta_i *  Ac_i)
     G = A*A'
     """
@@ -138,17 +138,17 @@ class CorrelationModel(Model):
     """
     Correlation model class for a fixed or flexible correlation model
     it models the correlation between different items  across 2 experimental conditions.
-    In this paramaterization: 
-    var(x) = exp(theta_x) 
+    In this paramaterization:
+    var(x) = exp(theta_x)
 
-    var(y) = exp(theta_y) 
+    var(y) = exp(theta_y)
 
-    cov(x,y) = sqrt(var(x)*var(y))* r 
+    cov(x,y) = sqrt(var(x)*var(y))* r
 
-    r = (exp(2*theta_z)-1)/(exp(2*theta_z)+1);  % Fisher inverse 
+    r = (exp(2*theta_z)-1)/(exp(2*theta_z)+1);  % Fisher inverse
     """
 
-    def __init__(self,name,within_cov = None,num_items=1, 
+    def __init__(self,name,within_cov = None,num_items=1,
                 corr=None,cond_effect = False):
         """
 
@@ -164,7 +164,7 @@ class CorrelationModel(Model):
         """
         Model.__init__(self,name)
         self.num_items = num_items
-        self.num_cond = 2 # Current default 
+        self.num_cond = 2 # Current default
         self.cond_effect = cond_effect
 
         self.cond_vec = np.kron(np.arange(self.num_cond), np.ones((self.num_items,)))
@@ -177,8 +177,8 @@ class CorrelationModel(Model):
             self.within_cov = within_cov
 
         # Initialize the Gc structure
-        self.n_cparam = self.num_cond * self.cond_effect # Number of condition effect parameters 
-        self.n_wparam = self.within_cov.shape[0] # Number of within condition parameters 
+        self.n_cparam = self.num_cond * self.cond_effect # Number of condition effect parameters
+        self.n_wparam = self.within_cov.shape[0] # Number of within condition parameters
         self.n_param = self.num_cond * self.n_wparam + self.n_cparam
         self.Gc = np.zeros((self.n_param,K,K))
 
@@ -189,8 +189,8 @@ class CorrelationModel(Model):
                 self.Gc[np.ix_([i],ind,ind)] = 1
             c = np.arange(self.n_wparam) + i * self.n_wparam + self.n_cparam
             self.Gc[np.ix_(c,ind,ind)] = self.within_cov
-        
-        # Check if fixed or flexible correlation model 
+
+        # Check if fixed or flexible correlation model
         self.corr = corr
         if self.corr is None:
             self.n_param = self.n_param + 1
@@ -206,16 +206,16 @@ class CorrelationModel(Model):
             dG_dTheta (np.ndarray)
                 3-d (n_param,K,K) array of partial matrix derivatives of G in respect to theta
         """
-        # Determine the correlation to model 
+        # Determine the correlation to model
         if self.corr is None:
-            z = theta[-1] # Last item 
-            r = (exp(2.*z)-1)/(exp(2.*z)+1) # Fisher inverse transformation 
-        else: 
+            z = theta[-1] # Last item
+            r = (exp(2.*z)-1)/(exp(2.*z)+1) # Fisher inverse transformation
+        else:
             r = self.corr
-        
+
         # Get the basic variances within conditons
         n = self.n_wparam * self.num_cond + self.num_cond * self.cond_effect # Number of basic parameters
-        o = self.num_cond * self.cond_effect # Number of condition 
+        o = self.num_cond * self.cond_effect # Number of condition
         dG_dTheta = np.zeros((self.n_param,self.Gc.shape[1],self.Gc.shape[1]))
         exp_theta=np.reshape(np.exp(theta[0:n]),(n,1,1)) # Bring into the right shape for broadcasting
         dG_dTheta[0:n,:,:] = self.Gc * exp_theta  # This is also the derivative dexp(x)/dx = exp(x)
@@ -226,12 +226,12 @@ class CorrelationModel(Model):
         i1 = np.where(self.cond_vec==0)[0]
         i2 = np.where(self.cond_vec==1)[0]
         p1 = np.arange(self.n_wparam) + self.n_cparam
-        p2 = p1 + self.n_wparam 
-        C = sqrt(G[np.ix_(i1,i1)] * G[np.ix_(i2,i2)]) # Maximal covariance 
+        p2 = p1 + self.n_wparam
+        C = sqrt(G[np.ix_(i1,i1)] * G[np.ix_(i2,i2)]) # Maximal covariance
         G[np.ix_(i1,i2)] = C * r
         G[np.ix_(i2,i1)] = C.T * r
 
-        # Now add the across-conditions blocks to the derivatives: 
+        # Now add the across-conditions blocks to the derivatives:
         for j in range(self.n_wparam):
             dG1 = dG_dTheta[np.ix_([p1[j]],i1,i1)]
             dG1 = dG1[0,:,:]
@@ -241,8 +241,8 @@ class CorrelationModel(Model):
             G2 = G[np.ix_(i2,i2)]
             dC1 = np.zeros(dG1.shape)
             dC2 = np.zeros(dG2.shape)
-            ind = C!=0 
-            dC1[ind] = 0.5 * 1/C[ind] * r * G2[ind] * dG1[ind] 
+            ind = C!=0
+            dC1[ind] = 0.5 * 1/C[ind] * r * G2[ind] * dG1[ind]
             dC2[ind] = 0.5 * 1/C[ind] * r * G1[ind] * dG2[ind]
             dG_dTheta[np.ix_([p1[j]],i1,i2)] = dC1
             dG_dTheta[np.ix_([p1[j]],i2,i1)]=  dC1.T
@@ -252,13 +252,31 @@ class CorrelationModel(Model):
         # Now add the main  Condition effect co-variance
         G = G+dG_dTheta[0:o,:,:].sum(axis=0)
 
-        # Add the derivative for the correlation parameter for flexible models  
+        # Add the derivative for the correlation parameter for flexible models
         if self.corr is None:
             dC = C*4*exp(2*z)/(exp(2*z)+1)**2
             dG_dTheta[np.ix_([n],i1,i2)] = dC
             dG_dTheta[np.ix_([n],i2,i1)] = dC.T
         return (G,dG_dTheta)
 
+    def set_theta0(self,G_hat):
+        """
+        Sets theta0 based on the crossvalidated second-moment
+
+        Parameters:
+            G_hat (numpy.ndarray)
+                Crossvalidated estimate of G
+        """
+        n_p = self.n_param - (self.corr is None)
+        G_hat = pcm.util.make_pd(G_hat)
+        X = np.zeros((G_hat.shape[0]**2, n_p))
+        for i in range(self.n_param):
+            X[:,i] = self.Gc[i,:,:].reshape((-1,))
+        h0 = pinv(X) @ G_hat.reshape((-1,1))
+        h0[h0<10e-4] = 10e-4
+        self.theta0 = log(h0.reshape(-1,))
+        if self.corr is None:
+            self.theta0 = np.concatenate([self.theta0,np.zeros((1,))])
 
 class FixedModel(Model):
     """
@@ -297,7 +315,7 @@ class FixedModel(Model):
 
 class FreeModel(Model):
     """
-    Free model class: Second moment matrix is 
+    Free model class: Second moment matrix is
     G = A*A', where A is a upper triangular matrix that is flexible
     """
     def __init__(self,name,n_cond):
@@ -348,7 +366,7 @@ class FreeModel(Model):
                 Crossvalidated estimate of G
         """
         G_pd = pcm.util.make_pd(G_hat)
-        A   = cholesky(G_pd) 
+        A   = cholesky(G_pd)
         self.theta0 = A[self.row, self.col]
 
 
@@ -374,7 +392,7 @@ class NoiseModel:
 class IndependentNoise(NoiseModel):
     """
     Simple Indepdennt noise model (i.i.d)
-    the only parameter is the noise variance 
+    the only parameter is the noise variance
     """
     def __init__(self):
         NoiseModel.__init__(self)
@@ -383,10 +401,10 @@ class IndependentNoise(NoiseModel):
 
     def predict(self, theta):
         """
-        Prediction function returns S - predicted noise covariance matrix 
+        Prediction function returns S - predicted noise covariance matrix
 
         Args:
-            theta ([np.array]): Array like of noiseparamters 
+            theta ([np.array]): Array like of noiseparamters
 
         Returns:
             [s]: Noise variance (for simplicity as a scalar)
@@ -398,7 +416,7 @@ class IndependentNoise(NoiseModel):
         Returns S^{-1}
 
         Args:
-            theta ([np.array]): Array like of noiseparamters 
+            theta ([np.array]): Array like of noiseparamters
 
         Returns:
             [s]: Inverse of noise variance (scalar)
@@ -407,10 +425,10 @@ class IndependentNoise(NoiseModel):
 
     def derivative(self, theta, n=0):
         """
-        Returns the derivative of S in respect to it's own parameters 
+        Returns the derivative of S in respect to it's own parameters
 
         Args:
-            theta ([np.array]): Array like of noiseparamters 
+            theta ([np.array]): Array like of noiseparamters
             n (int, optional): Number of parameter to get derivate for. Defaults to 0.
 
         Returns:
@@ -419,11 +437,11 @@ class IndependentNoise(NoiseModel):
         return np.exp(theta[0])
 
     def set_theta0(self, Y, Z, X=None):
-        """Makes an initial guess on noise paramters 
+        """Makes an initial guess on noise paramters
 
         Args:
-            Y ([np.array]): Data 
-            Z ([np.array]): Random Effects matrix 
+            Y ([np.array]): Data
+            Z ([np.array]): Random Effects matrix
             X ([np.array], optional): [description]. Fixed effects matrix.
         """
         N, P = Y.shape
@@ -438,7 +456,7 @@ class IndependentNoise(NoiseModel):
 class BlockPlusIndepNoise(NoiseModel):
     """
     This noise model uses correlated noise per partition (block)
-    plus independent noise per observation 
+    plus independent noise per observation
     For beta-values from an fMRI analysis, this is an adequate model
     """
 
@@ -457,13 +475,13 @@ class BlockPlusIndepNoise(NoiseModel):
 
     def predict(self, theta):
         """
-        Prediction function returns S - predicted noise covariance matrix 
+        Prediction function returns S - predicted noise covariance matrix
 
         Args:
-            theta ([np.array]): Array like of noiseparamters 
+            theta ([np.array]): Array like of noiseparamters
 
         Returns:
-            [S]: Noise covariance matrix 
+            [S]: Noise covariance matrix
         """
 
         S = self.BBT * exp(theta[0]) + eye(self.N) * exp(theta[1])
@@ -474,7 +492,7 @@ class BlockPlusIndepNoise(NoiseModel):
         Returns S^{-1}
 
         Args:
-            theta ([np.array]): Array like of noiseparamters 
+            theta ([np.array]): Array like of noiseparamters
 
         Returns:
             [iS]: Inverse of noise covariance
@@ -487,10 +505,10 @@ class BlockPlusIndepNoise(NoiseModel):
 
     def derivative(self, theta,n=0):
         """
-        Returns the derivative of S in respect to it's own parameters 
+        Returns the derivative of S in respect to it's own parameters
 
         Args:
-            theta ([np.array]): Array like of noiseparamters 
+            theta ([np.array]): Array like of noiseparamters
             n (int, optional): Number of parameter to get derivate for. Defaults to 0.
 
         Returns:

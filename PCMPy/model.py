@@ -102,7 +102,7 @@ class ComponentModel(Model):
         """
         Calculation of G
 
-        Args:
+        Parameters:
             theta (numpy.ndarray):    Vector of model parameters
         Returns:
             G (np.ndarray)
@@ -198,7 +198,8 @@ class CorrelationModel(Model):
     def predict(self,theta):
         """
         Calculation of G for a correlation model
-        Args:
+
+        Parameters:
             theta (numpy.ndarray):    Vector of model parameters
         Returns:
             G (np.ndarray)
@@ -209,7 +210,7 @@ class CorrelationModel(Model):
         # Determine the correlation to model
         if self.corr is None:
             z = theta[-1] # Last item
-            r = (exp(2.*z)-1)/(exp(2.*z)+1) # Fisher inverse transformation
+            r = (exp(2*z)-1)/(exp(2*z)+1) # Fisher inverse transformation
         else:
             r = self.corr
 
@@ -270,13 +271,30 @@ class CorrelationModel(Model):
         n_p = self.n_param - (self.corr is None)
         G_hat = pcm.util.make_pd(G_hat)
         X = np.zeros((G_hat.shape[0]**2, n_p))
-        for i in range(self.n_param):
+        for i in range(n_p):
             X[:,i] = self.Gc[i,:,:].reshape((-1,))
         h0 = pinv(X) @ G_hat.reshape((-1,1))
         h0[h0<10e-4] = 10e-4
         self.theta0 = log(h0.reshape(-1,))
         if self.corr is None:
             self.theta0 = np.concatenate([self.theta0,np.zeros((1,))])
+
+    def get_correlation(self,theta):
+        """
+        Returns the correlations from a set of fitted parameters
+
+        Parameters:
+            theta (numpy.ndarray):   n_param vector or n_param x n_subj matrix of model parameters
+        Returns:
+            correlations (numpy.ndarray)
+        """
+        N , n_param = theta.shape
+        if self.corr is None:
+            z = theta[self.n_param-1]
+            r = (exp(2*z)-1)/(exp(2*z)+1)
+        else:
+            r = self.corr # Fixed correlations
+        return r
 
 class FixedModel(Model):
     """

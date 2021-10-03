@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Functions for data simulation from PCM-models 
+Functions for data simulation from PCM-models
 @author: jdiedrichsen
 """
 
@@ -35,7 +35,7 @@ def make_design(n_cond, n_part):
 
 def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
                 signal=1, noise=1, signal_cov_channel=None, noise_cov_channel=None,noise_cov_trial=None, use_exact_signal=False, use_same_signal=False,
-                part_vec = None):
+                part_vec = None, rng = None):
     """
     Simulates a fMRI-style data set
 
@@ -44,7 +44,7 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
             the model from which to generate data
         theta (numpy.ndarray):
             vector of parameters (one dimensional)
-        cond_vec (numpy.ndarray): 
+        cond_vec (numpy.ndarray):
             RSA-style model: vector of experimental conditions
             Encoding-style: design matrix (n_obs x n_cond)
         n_channel (int):
@@ -65,8 +65,10 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
             Makes the signal so that G is exactly as specified (default: False)
         use_same_signal (bool):
             Uses the same signal for all simulation (default: False)
-        part_vec (np.array): 
-            Optional partition that is added to the data set obs_descriptors 
+        part_vec (np.array):
+            Optional partition that is added to the data set obs_descriptors
+        rng (np.random.default_rng):
+            Optional random number generator object to pass specific state
     Returns:
         data (list):              List of pyrsa.Dataset with obs_descriptors
     """
@@ -74,6 +76,10 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
     # Get the model prediction and build second moment matrix
     # Note that this step assumes that RDM uses squared Euclidean distances
     G, _ = model.predict(theta)
+
+    # If no random number generator is passed - make one
+    if rng is None:
+        rng = np.random.default_rng()
 
     # Make design matrix
     if (cond_vec.ndim == 1):
@@ -127,7 +133,7 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
         if (use_same_signal == False):
             true_U = make_signal(G, n_channel, use_exact_signal, signal_chol_channel)
         # Make noise with normal distribution - allows later plugin of other dists
-        epsilon = np.random.uniform(0, 1, size=(n_obs, n_channel))
+        epsilon = rng.uniform(0, 1, size=(n_obs, n_channel))
         epsilon = ss.norm.ppf(epsilon) * np.sqrt(noise)
         # Now add spatial and temporal covariance structure as required
         if (noise_chol_channel is not None):
@@ -140,7 +146,7 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
         dataset_list.append(datas)
     return dataset_list
 
-def make_signal(G, n_channel,make_exact=False, chol_channel=None):
+def make_signal(G, n_channel,make_exact=False, chol_channel=None,rng = None):
     """
     Generates signal exactly with a specified second-moment matrix (G)
 
@@ -151,14 +157,22 @@ def make_signal(G, n_channel,make_exact=False, chol_channel=None):
                              (default: False)
         chol_channel: Cholensky decomposition of the signal covariance matrix
                              (default: None - makes signal i.i.d.)
+        rng (np.random.default_rng):
+                            Optional random number generator object to pass specific state
+
     Returns:
         np.array (n_cond x n_channel): random signal
 
     """
     # Generate the true patterns with exactly correct second moment matrix
     n_cond = G.shape[0]
+
+    # If no random number generator is passed - make one
+    if rng is None:
+        rng = np.random.default_rng()
+
     # We use two-step procedure allow for different distributions later on
-    true_U = np.random.uniform(0, 1, size=(n_cond, n_channel))
+    true_U = rng.uniform(0, 1, size=(n_cond, n_channel))
     true_U = ss.norm.ppf(true_U)
     # Make orthonormal row vectors
     if (make_exact):

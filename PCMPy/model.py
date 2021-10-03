@@ -210,7 +210,10 @@ class CorrelationModel(Model):
         # Determine the correlation to model
         if self.corr is None:
             z = theta[-1] # Last item
-            r = (exp(2*z)-1)/(exp(2*z)+1) # Fisher inverse transformation
+            if np.abs(z)>150:
+                r=np.nan
+            else:
+                r = (exp(2*z)-1)/(exp(2*z)+1) # Fisher inverse transformation
         else:
             r = self.corr
 

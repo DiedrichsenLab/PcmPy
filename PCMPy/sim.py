@@ -131,7 +131,7 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
     for i in range(0, n_sim):
         # If necessary - make a new signal
         if (use_same_signal == False):
-            true_U = make_signal(G, n_channel, use_exact_signal, signal_chol_channel)
+            true_U = make_signal(G, n_channel, use_exact_signal, signal_chol_channel,rng=rng)
         # Make noise with normal distribution - allows later plugin of other dists
         epsilon = rng.uniform(0, 1, size=(n_obs, n_channel))
         epsilon = ss.norm.ppf(epsilon) * np.sqrt(noise)

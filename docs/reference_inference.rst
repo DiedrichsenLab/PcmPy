@@ -1,4 +1,4 @@
-.. _inference:
+.. _refinference:
 
 Inference module
 =================================

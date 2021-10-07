@@ -26,11 +26,11 @@ Models can be fitted to each data set individually, using the function ``fit_mod
 
 A number of input options can be specified as well:
 
-* ``run_effect``: Determines the modelling of the within-partition covariance. This is especially important for fMRI data, where activation estimates within a partition (imaging run) are usually correlated, as they are measured relative to the same baseline. The partition effect can be either included as a ``fixed`` effect, in which case it is simply subtracted out. However, by specifying it as a fixed effect, the algorithm correctly takes the subtraction into account when fitting the model. If the run-effect is set to ``random``, the covariance will be modelled together with the model parameter. If it is set to ``none`` the run effect is ignored.
+* ``fixed_effect``: Determines what fixed effects are included in the model. You can either pass a full design matrix, or ``None``. For convenience ``fixed_effect`` can also be set to ``block`` in which case it will model the mean of each imaging run (partition). This is especially important for fMRI data, where activation estimates within a partition (imaging run) are usually correlated, as they are measured relative to the same baseline.
 
 * ``fit_scale``: Determines whether a scale parameter is fit for each subject, which determines the amount of signal variance. This should be done at least for fixed models. To ensure that the scale parameter is positive, the routine fits the log of the scale paramter, such that the resulting signal has a covariance matrix of :math:`\mathbf{G}(\boldsymbol{\theta_m} exp(\theta_s)`. For component (and other) models that usually also model the signal strength, the additional scale parameter introduces some redundancy. For this reason we impose a log-normal prior forcing the scale parameter to be close to 1. The variance of this prior can be adjusted with through the option ``scale_prior`` and is set to 1000 by default.
 
-* ``noise_cov``: Here you can optionally specify a covariance structure of the noise. For fMRI data, a useful approach is to use the estimate from the first-level model, which is related to the structure of the design :math:`(\mathbf{X}^T\mathbf{X})^{-1}`. Together with the option ``run_effect``, this input will determine your \ref{Noisemodel}.
+* ``noise_cov``: Here you can optionally specify a covariance structure of the noise. For fMRI data, a useful approach is to use the estimate from the first-level model, which is related to the structure of the design :math:`(\mathbf{X}^T\mathbf{X})^{-1}`. You can also set this variable to ``block``, in which case the \ref{Noisemodel} will be set to ``BlockPlusIndepNoise``.
 
 The output ``T`` is a pandas data frame that is hierarchically organised.
 
@@ -73,7 +73,7 @@ Fitting to group data sets
 The function ``fit_model_group`` fits a model to a group of subjects. By default, all parameters that change the **G** matrix, that is ``theta[0:M.n_param]`` are shared across all subjects. To account for the individual signal-to-noise level, by default a separate signal strength and noise parameter(s) are fitted for each subject. For each individual subject, the predicted covariance matrix of the data is:
 
 .. math::
-    {\bf{V}_i}=\theta_s \bf{ZG(\theta_m)Z^{T}+S(\theta_{\epsilon})
+    {\bf{V}_i}=\theta_s \bf{ZG}(\theta_m)Z^{T}+S(\theta_{\epsilon})
 
 To finely control, which parameters are fit commonly to the group and which ones are fit individually, one can set the boolean vector ``M[m].common_param``, indicating which parameters are fit to the entire group. The output `theta` for each model contains now a single vector of the common model parameters, followed by the data-set specific parameters: possibly the non-common model parameters, and then scale and noise parameters.
 

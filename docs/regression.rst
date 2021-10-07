@@ -91,17 +91,4 @@ Finally, if we want to estimate the importance of different groups of columns, w
 
 In this example, the first 2, the next 5, and the last 3 columns share one Ridge coefficient. The call to :code:`M1.optimize_regularization(Z,Y)` causes 4 theta parameters and hence 3 regularization coefficients to be estimated. If the importance of different columns of the design matrix is truely different, this will provide better predictions.
 
-PCM vs. GridSearchCV
---------------------
-
-In terms of accuracy
-
-In terms of speed,
-
-Scaling in N
-
-Scaling in P
-
-Scaling in number of components
-
 

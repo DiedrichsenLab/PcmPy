@@ -40,7 +40,6 @@ def likelihood_individ(theta, M, YY, Z, X=None,
             0: Only return negative loglikelihood
             1: Return first derivative
             2: Return first and second derivative (default)
-
     Returns:
         negloglike:
             Negative log-likelihood of the data under a model
@@ -48,7 +47,6 @@ def likelihood_individ(theta, M, YY, Z, X=None,
             First derivative of negloglike in respect to the parameters
         ddLdtheta2 (2d-np.array)
             Second derivative of negloglike in respect to the parameters
-
     """
 
     N = YY.shape[0]
@@ -189,6 +187,7 @@ def likelihood_group(theta, M, YY, Z, X=None,
         return_individ (bool)
             return individual likelihoods instead of group likelihood
                     return_deriv (int)
+
     Returns:
         negloglike:
             Negative log-likelihood of the data under a model
@@ -196,8 +195,8 @@ def likelihood_group(theta, M, YY, Z, X=None,
             First derivative of negloglike in respect to the parameters
         ddLdtheta2 (2d-np.array)
             Second derivative of negloglike in respect to the parameters
-
     """
+
     n_subj = len(YY)
     n_param = theta.shape[0]
 
@@ -258,7 +257,7 @@ def likelihood_group(theta, M, YY, Z, X=None,
     return ra
 
 def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
-                    scale_prior = 1e3, noise_cov=None, algorithm=None, 
+                    scale_prior = 1e3, noise_cov=None, algorithm=None,
                     optim_param={}, theta0=None, verbose = True):
     """
     Fits pattern component model(s) specified by M to data from a number of
@@ -283,8 +282,9 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
             Additional paramters to be passed to the optimizer
         theta0 (list of np.arrays):
             List of starting values (same format as return argument theta)
-        verbose (bool): 
+        verbose (bool):
             Provide printout of progress? Default: True
+
     Returns
         T (pandas.dataframe):
             Dataframe with the fields:
@@ -369,7 +369,7 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
     return [T,theta]
 
 def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
-                    scale_prior = 1e3, noise_cov=None, algorithm=None, 
+                    scale_prior = 1e3, noise_cov=None, algorithm=None,
                     optim_param={}, theta0=None, verbose=True):
     """
     Fits pattern component model(s) specified by M to a group of subjects
@@ -396,7 +396,7 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
             Additional paramters to be passed to the optimizer
         theta0 (list of np.arrays):
             List of starting values (same format as return argument theta)
-        verbose (bool): 
+        verbose (bool):
             Provide printout of progress? Default: True
 
     Returns
@@ -443,7 +443,7 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
     # M = pcm.optimize.best_algorithm(M,algorithm)
 
     # Prepare the data for all the subjects
-    Z, X, YY, n_channel, Noise, G_hat = pcm.inference.set_up_fit_group(Data, 
+    Z, X, YY, n_channel, Noise, G_hat = pcm.inference.set_up_fit_group(Data,
             fixed_effect = fixed_effect, noise_cov = noise_cov)
 
     # Average second moment
@@ -493,7 +493,7 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
     return [T,theta]
 
 def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
-                    scale_prior = 1e3, noise_cov=None, algorithm=None, 
+                    scale_prior = 1e3, noise_cov=None, algorithm=None,
                     optim_param={}, theta0=None, verbose=True):
     """
     Fits pattern component model(s) specified by M to N-1 subjects and evaluates the likelihood on the Nth subject. Only the common model parameters are shared across subjects.The scale and noise parameters
@@ -518,7 +518,7 @@ def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
             Additional paramters to be passed to the optimizer
         theta0 (list of np.arrays):
             List of starting values (same format as return argument theta)
-        verbose (bool): 
+        verbose (bool):
             Provide printout of progress? Default: True
 
     Returns:
@@ -681,7 +681,7 @@ def set_up_fit(Data, fixed_effect = 'block', noise_cov = None):
         X = fixed_effect
 
     # Now choose the noise model
-    if noise_cov is None: 
+    if noise_cov is None:
         Noise = model.IndependentNoise()
     elif noise_cov == 'block':
         Noise = model.BlockPlusIndepNoise(part_vec)

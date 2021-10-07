@@ -14,24 +14,25 @@ from numpy.linalg import eigh
 def est_G_crossval(Y, Z, part_vec, X=None, S=None):
     """
     Obtains a crossvalidated estimate of G
-    Y = Z @ U + X @ B + E
-    Where var(U) = G
+    Y = Z @ U + X @ B + E, where var(U) = G
 
     Parameters:
-        Y (numpy.ndarray):
+        Y (numpy.ndarray)
             Activity data
-        Z (numpy.ndarray):
+        Z (numpy.ndarray)
             2-d: Design matrix for conditions / features U
-            1-d: condition vector 
-        part_vec (numpy.ndarray):
+            1-d: condition vector
+        part_vec (numpy.ndarray)
             Vector indicating the partition number
-        X (numpy.ndarray):
+        X (numpy.ndarray)
             Fixed effects to be removed
-        S (numpy.ndarray):
+        S (numpy.ndarray)
+
     Returns:
-        G_hat (numpy.ndarray):
+        G_hat (numpy.ndarray)
             n_cond x n_cond matrix
-        Sig (numpy.ndarray): 
+        Sig (numpy.ndarray)
+            n_cond x n_cond noise estimate per block
 
     """
 
@@ -39,12 +40,12 @@ def est_G_crossval(Y, Z, part_vec, X=None, S=None):
     part = np.unique(part_vec)
     n_part = part.shape[0]
 
-    # Make Z into a design matrix 
+    # Make Z into a design matrix
     if Z.ndim == 1:
         Z = pcm.matrix.indicator(Z)
     n_cond = Z.shape[1]
 
-    # Allocate memory 
+    # Allocate memory
     A = np.zeros((n_part,n_cond,n_channel)) # Allocate memory
     Bp = np.zeros((n_cond,n_channel))
     G = np.zeros((n_part,n_cond,n_cond)) # Allocate memory
@@ -87,9 +88,9 @@ def make_pd(G,thresh = 1e-10):
 
     Parameters:
         G   (square 2d-np.array)
-            estimated KxK second momement matrix 
+            estimated KxK second momement matrix
         thresh (float)v
-            threshold for increasing small eigenvalues 
+            threshold for increasing small eigenvalues
     Returns:
         Gpd (square 2d-np.array)
             semi-positive definite version of G
@@ -98,6 +99,6 @@ def make_pd(G,thresh = 1e-10):
 
     G = (G + G.T) / 2 # Symmetrize
     Glam, V = eigh(G)
-    Glam[Glam < thresh] = thresh # rectify small eigenvalues 
+    Glam[Glam < thresh] = thresh # rectify small eigenvalues
     G_pd = V @ np.diag(Glam) @ V.T
     return G_pd

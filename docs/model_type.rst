@@ -118,7 +118,7 @@ The derivative of :math:`r` in respect to :math:`\theta` can be derived using th
 
 Example
 ^^^^^^^
-For a full example, please see the :ref:`Correlation Model Example`.
+For a full example, please see the :ref:`Correlation models`.
 
 
 Free models

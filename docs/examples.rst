@@ -8,5 +8,6 @@ The life notebooks and underlying data can be found at https://github.com/Diedri
 .. toctree::
    :maxdepth: 1
 
-   ../demos/demo_fingers.ipynb
+   demos/demo_fingers.ipynb
+   demos/demo_correlation.ipynb
 

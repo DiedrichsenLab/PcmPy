@@ -37,9 +37,9 @@ class FeatureModel(Model):
         """
 
         Args:
-            name (string):
+            name (string)
                 name of the particular model for indentification
-            Ac (numpy.ndarray):
+            Ac (numpy.ndarray)
                 3-dimensional array with components of A
         Returns:
             Model object
@@ -155,10 +155,11 @@ class CorrelationModel(Model):
         Parameters:
             name (string)
                 name of the particular model for indentification
-            with_cov (numpy.ndarray or None)
+            within_cov (numpy.ndarray or None)
                 how to model within condition cov-ariance between items
-            num_items (int):
+            num_items (int)
                 Number of items within each condition
+
         Returns:
             Model object
         """
@@ -287,9 +288,12 @@ class CorrelationModel(Model):
         Returns the correlations from a set of fitted parameters
 
         Parameters:
-            theta (numpy.ndarray):   n_param vector or n_param x n_subj matrix of model parameters
+            theta (numpy.ndarray):
+                n_param vector or n_param x n_subj matrix of model parameters
+
         Returns:
             correlations (numpy.ndarray)
+                Correlation value
         """
         N , n_param = theta.shape
         if self.corr is None:
@@ -362,6 +366,7 @@ class FreeModel(Model):
 
         Args:
             theta (numpy.ndarray):    Vector of model parameters
+
         Returns:
             G (np.ndarray)
                 2-dimensional (K,K) array of predicted second moment
@@ -428,7 +433,8 @@ class IndependentNoise(NoiseModel):
             theta ([np.array]): Array like of noiseparamters
 
         Returns:
-            [s]: Noise variance (for simplicity as a scalar)
+            s (double)
+                Noise variance (for simplicity as a scalar)
         """
         return np.exp(theta[0])
 
@@ -440,7 +446,8 @@ class IndependentNoise(NoiseModel):
             theta ([np.array]): Array like of noiseparamters
 
         Returns:
-            [s]: Inverse of noise variance (scalar)
+            s (double)
+                Inverse of noise variance (scalar)
         """
         return 1./np.exp(theta[0])
 
@@ -449,11 +456,14 @@ class IndependentNoise(NoiseModel):
         Returns the derivative of S in respect to it's own parameters
 
         Args:
-            theta ([np.array]): Array like of noiseparamters
-            n (int, optional): Number of parameter to get derivate for. Defaults to 0.
+            theta ([np.array])
+                Array like of noiseparamters
+            n (int, optional)
+                Number of parameter to get derivate for. Defaults to 0.
 
         Returns:
-            [d]: [derivative of S in respective to theta]
+            d (np-array)
+                derivative of S in respective to theta
         """
         return np.exp(theta[0])
 
@@ -461,9 +471,12 @@ class IndependentNoise(NoiseModel):
         """Makes an initial guess on noise paramters
 
         Args:
-            Y ([np.array]): Data
-            Z ([np.array]): Random Effects matrix
-            X ([np.array], optional): [description]. Fixed effects matrix.
+            Y ([np.array])
+                Data
+            Z ([np.array])
+                Random Effects matrix
+            X ([np.array], optional)
+                Fixed effects matrix.
         """
         N, P = Y.shape
         if X is not None:
@@ -502,7 +515,8 @@ class BlockPlusIndepNoise(NoiseModel):
             theta ([np.array]): Array like of noiseparamters
 
         Returns:
-            [S]: Noise covariance matrix
+            s (double)
+                Noise covariance matrix
         """
 
         S = self.BBT * exp(theta[0]) + eye(self.N) * exp(theta[1])

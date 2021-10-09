@@ -6,3 +6,4 @@ pandas
 matplotlib
 ipykernel
 nbsphinx
+scipy

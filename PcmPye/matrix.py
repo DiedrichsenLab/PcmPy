@@ -21,7 +21,7 @@ def indicator(index_vector, positive=False):
             in the index_vector? Default: false
 
     Returns:
-        indicator_matrix (numpy.ndarray)
+        indicator_matrix (numpy.ndarray):
             nrow x nconditions indicator matrix
 
     """
@@ -40,11 +40,11 @@ def pairwise_contrast(index_vector):
     """ Contrast matrix with one row per unqiue pairwise contrast
 
     Parameters:
-        index_vector (numpy.ndarray)
+        index_vector (numpy.ndarray):
             n_row vector to code discrete values (one dimensional)
 
     Returns:
-        contrast matrix (numpy.ndarray)
+        contrast matrix (numpy.ndarray):
             n_values * (n_values-1)/2 x n_row
 
     """
@@ -69,11 +69,11 @@ def centering(size):
     """ generates a centering matrix
 
     Parameters:
-        size (int)
+        size (int):
             size of the center matrix
 
     Returns:
-        centering_matrix (numpy.ndarray)
+        centering_matrix (numpy.ndarray):
             size * size
     """
     centering_matrix = np.identity(size) - np.ones(size) / size

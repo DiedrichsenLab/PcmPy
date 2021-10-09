@@ -41,8 +41,6 @@ class FeatureModel(Model):
                 name of the particular model for indentification
             Ac (numpy.ndarray)
                 3-dimensional array with components of A
-        Returns:
-            Model object
         """
 
         Model.__init__(self,name)
@@ -59,9 +57,9 @@ class FeatureModel(Model):
             theta (numpy.ndarray)
                 Vector of model parameters
         Returns:
-            G (np.ndarray)
+            G (np.ndarray):
                 2-dimensional (K,K) array of predicted second moment
-            dG_dTheta (np.ndarray)
+            dG_dTheta (np.ndarray):
                 3-d (n_param,K,K) array of partial matrix derivatives of G in respect to theta
         """
 
@@ -83,12 +81,10 @@ class ComponentModel(Model):
         """
 
         Parameters:
-            name (string)
+            name (string):
                 name of the particular model for indentification
-            Gc (numpy.ndarray)
+            Gc (numpy.ndarray):
                 3-dimensional array with compoments of G
-        Returns:
-            Model object
         """
         Model.__init__(self,name)
         if type(Gc) is list:
@@ -105,9 +101,9 @@ class ComponentModel(Model):
         Parameters:
             theta (numpy.ndarray):    Vector of model parameters
         Returns:
-            G (np.ndarray)
+            G (np.ndarray):
                 2-dimensional (K,K) array of predicted second moment
-            dG_dTheta (np.ndarray)
+            dG_dTheta (np.ndarray):
                 3-d (n_param,K,K) array of partial matrix derivatives of G in respect to theta
         """
 
@@ -117,11 +113,10 @@ class ComponentModel(Model):
         return (G,dG_dTheta)
 
     def set_theta0(self,G_hat):
-        """
-        Sets theta0 based on the crossvalidated second-moment
+        """Sets theta0 based on the crossvalidated second-moment
 
         Parameters:
-            G_hat (numpy.ndarray)
+            G_hat (numpy.ndarray):
                 Crossvalidated estimate of G
         """
         if self.n_param==0:
@@ -153,15 +148,12 @@ class CorrelationModel(Model):
         """
 
         Parameters:
-            name (string)
+            name (string):
                 name of the particular model for indentification
-            within_cov (numpy.ndarray or None)
+            within_cov (numpy.ndarray or None):
                 how to model within condition cov-ariance between items
-            num_items (int)
+            num_items (int):
                 Number of items within each condition
-
-        Returns:
-            Model object
         """
         Model.__init__(self,name)
         self.num_items = num_items
@@ -508,14 +500,13 @@ class BlockPlusIndepNoise(NoiseModel):
         self.BBT = self.B @ self.B.T
 
     def predict(self, theta):
-        """
-        Prediction function returns S - predicted noise covariance matrix
+        """Prediction function returns S - predicted noise covariance matrix
 
         Args:
             theta ([np.array]): Array like of noiseparamters
 
         Returns:
-            s (double)
+            s (np.array):
                 Noise covariance matrix
         """
 
@@ -523,14 +514,13 @@ class BlockPlusIndepNoise(NoiseModel):
         return S
 
     def inverse(self, theta):
-        """
-        Returns S^{-1}
+        """Returns S^{-1}
 
         Args:
-            theta ([np.array]): Array like of noiseparamters
+            theta (np.array): Array like of noiseparamters
 
         Returns:
-            [iS]: Inverse of noise covariance
+            iS (np.array): Inverse of noise covariance
         """
         sb = exp(theta[0]) # Block parameter
         se = exp(theta[1])
@@ -539,15 +529,14 @@ class BlockPlusIndepNoise(NoiseModel):
         return S
 
     def derivative(self, theta,n=0):
-        """
-        Returns the derivative of S in respect to it's own parameters
+        """Returns the derivative of S in respect to it's own parameters
 
         Args:
-            theta ([np.array]): Array like of noiseparamters
+            theta (np.array): Array like of noiseparamters
             n (int, optional): Number of parameter to get derivate for. Defaults to 0.
 
         Returns:
-            [d]: [derivative of S in respective to theta]
+            d (np.array): derivative of S in respective to theta
         """
         if n==0:
             return self.BBT * np.exp(theta[0])

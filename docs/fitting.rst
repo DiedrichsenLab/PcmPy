@@ -111,7 +111,7 @@ The demo ``demo_finger.ipynb`` provides a full example how to use group crossval
    # Make a plot, using the group fit as upper, and the crossvalidated fit as a the lower noise ceiling
    ax = pcm.vis.model_plot(T_cv.likelihood,null_model = 'null',noise_ceiling= 'ceil',upper_ceiling = T_gr.likelihood['ceil'])
 
-.. _likelihood:
+.. _likelihood_opt:
 
 Likelihood and Optimization
 ---------------------------

@@ -14,39 +14,42 @@ import pandas as pd
 def likelihood_individ(theta, M, YY, Z, X=None,
                        Noise = model.IndependentNoise(),
                        n_channel=1, fit_scale=False, scale_prior = 1e3, return_deriv=0):
-    """
-    Negative Log-Likelihood of the data and derivative in respect to the parameters
+    """Negative Log-Likelihood of the data and derivative in respect to the parameters
 
     Parameters:
-        theta (np.array)
-            Vector of (log-)model parameters: These include model, signal, and noise parameters
-        M (PcmPy.model.Model)
+        theta (np.array):
+            Vector of (log-)model parameters - these include model, signal, and noise parameters
+        M (PcmPy.model.Model):
             Model object with predict function
-        YY (2d-np.array)
+        YY (2d-np.array):
             NxN Matrix of outer product of the activity data (Y*Y')
-        Z (2d-np.array)
+        Z (2d-np.array):
             NxQ Design matrix - relating the trials (N) to the random effects (Q)
-        X (np.array)
+        X (np.array):
             Fixed effects design matrix - will be accounted for by ReML
-        Noise (pcm.Noisemodel)
+        Noise (pcm.Noisemodel):
             Pcm-noise mode to model block-effects (default: IndepenentNoise)
-        n_channel (int)
+        n_channel (int):
             Number of channels
-        fit_scale (bool)
+        fit_scale (bool):
             Fit a scaling parameter for the model (default is False)
         scale_prior (float):
             Prior variance for log-normal prior on scale parameter
-        return_deriv (int)
+        return_deriv (int):
             0: Only return negative loglikelihood
             1: Return first derivative
             2: Return first and second derivative (default)
+
     Returns:
-        negloglike:
+        negloglike (double):
             Negative log-likelihood of the data under a model
-        dLdtheta (1d-np.array)
+
+        dLdtheta (1d-np.array):
             First derivative of negloglike in respect to the parameters
-        ddLdtheta2 (2d-np.array)
+
+        ddLdtheta2 (2d-np.array):
             Second derivative of negloglike in respect to the parameters
+
     """
 
     N = YY.shape[0]
@@ -152,18 +155,13 @@ def likelihood_group(theta, M, YY, Z, X=None,
                        Noise=model.IndependentNoise(),
                        n_channel=1, fit_scale=True, scale_prior=1e3,
                        return_deriv=0,return_individ=False):
-    """
-    Negative Log-Likelihood of group data and derivative in respect to the parameters
+    """Negative Log-Likelihood of group data and derivative in respect to the parameters
 
     Parameters:
         theta (np.array):
-            Vector of (log-)model parameters consisting of
-                Common model parameters
-                    M.n_param or sum(M.common_param)
-                Participant-specific parameters (interated by subject)
-                    unqiue model parameters (not in common_param)
-                    scale parameter
-                    noise parameters
+            Vector of (log-)model parameters consisting of common model parameters (M.n_param or sum of M.common_param),
+            participant-specific parameters (interated by subject), unique model parameters (not in common_param),
+            scale parameter,noise parameters
         M (pcm.Model):
             Model object
         YY (List of np.arrays):
@@ -184,17 +182,21 @@ def likelihood_group(theta, M, YY, Z, X=None,
             0: Only return negative likelihood
             1: Return first derivative
             2: Return first and second derivative (default)
-        return_individ (bool)
+        return_individ (bool):
             return individual likelihoods instead of group likelihood
-                    return_deriv (int)
+        return_deriv (int):
+            0:None, 1:First, 2: second
 
     Returns:
         negloglike:
             Negative log-likelihood of the data under a model
+
         dLdtheta (1d-np.array)
             First derivative of negloglike in respect to the parameters
+
         ddLdtheta2 (2d-np.array)
             Second derivative of negloglike in respect to the parameters
+
     """
 
     n_subj = len(YY)
@@ -259,9 +261,9 @@ def likelihood_group(theta, M, YY, Z, X=None,
 def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
                     scale_prior = 1e3, noise_cov=None, algorithm=None,
                     optim_param={}, theta0=None, verbose = True):
-    """
-    Fits pattern component model(s) specified by M to data from a number of
-    subjects.The model parameters are all individually fit.
+    """Fits Models to a data set inidividually.
+
+    The model parameters are all individually fit.
 
     Parameters:
         Data (pcm.Dataset or list of pcm.Datasets):
@@ -295,11 +297,14 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
             run:                Run parameter (if run = 'random')
             iterations:         Number of interations for model fit
             time:               Elapsed time in sec
+
         theta (list of np.arrays):
             List of estimated model parameters, each a
             #params x #numSubj np.array
+
         G_pred (list of np.arrays):
             List of estimated G-matrices under the model
+
     """
 
     # Get the number of subjects
@@ -371,8 +376,8 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
 def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
                     scale_prior = 1e3, noise_cov=None, algorithm=None,
                     optim_param={}, theta0=None, verbose=True):
-    """
-    Fits pattern component model(s) specified by M to a group of subjects
+    """ Fits PCM models(s) to a group of subjects
+
     The model parameters are (by default) shared across subjects.
     Scale and noise parameters are individual for each subject.
     Some model parameters can also be made individual by setting M.common_param
@@ -399,7 +404,7 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
         verbose (bool):
             Provide printout of progress? Default: True
 
-    Returns
+    Returns:
         T (pandas.dataframe):
             Dataframe with the fields:
             SN:                 Subject number
@@ -408,8 +413,10 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
             noise:              Noise parameter- exp(theta_eps)
             iterations:         Number of interations for model fit
             time:               Elapsed time in sec
+
         theta (list of np.arrays):
             List of estimated model parameters, each a
+
         G_pred (list of np.arrays):
             List of estimated G-matrices under the model
     """
@@ -495,8 +502,9 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
 def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
                     scale_prior = 1e3, noise_cov=None, algorithm=None,
                     optim_param={}, theta0=None, verbose=True):
-    """
-    Fits pattern component model(s) specified by M to N-1 subjects and evaluates the likelihood on the Nth subject. Only the common model parameters are shared across subjects.The scale and noise parameters
+    """Fits PCM model(sto N-1 subjects and evaluates the likelihood on the Nth subject.
+
+    Only the common model parameters are shared across subjects.The scale and noise parameters
     are still fitted to each subject. Some model parameters can also be made individual by setting M.common_param
 
     Parameters:
@@ -530,10 +538,13 @@ def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
             noise:              Noise parameter- exp(theta_eps)
             iterations:         Number of interations for model fit
             time:               Elapsed time in sec
+
         theta (list of np.arrays):
             List of estimated model parameters - common group parameters come from the training data, scale and noise parameter from the testing data
+
         G_pred (list of np.arrays):
             List of estimated G-matrices under the model
+
     """
 
     # Get the number of subjects
@@ -635,8 +646,7 @@ def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
     return [T,theta]
 
 def set_up_fit(Data, fixed_effect = 'block', noise_cov = None):
-    """
-    Utility routine pre-calculates and sets design matrices, etc for the PCM fit
+    """Utility routine pre-calculates and sets design matrices, etc for the PCM fit
 
     Parameters:
         Data (pcm.dataset):
@@ -645,17 +655,23 @@ def set_up_fit(Data, fixed_effect = 'block', noise_cov = None):
             Can be None, 'block', or a design matrix. 'block' includes an intercept for each partition.
         noise_cov:
             Can be None: (i.i.d noise), 'block': a common noise paramter or a List of noise covariances for the different partitions
+
     Returns:
         Z:
             Design matrix for random effects
+
         X:
             Design matrix for fixed effects
+
         YY:
             Quadratic form of the data (Y Y')
+
         Noise:
             Noise model
+
         G_hat:
             Crossvalidated estimate of second moment of U
+
     """
 
     # Make design matrix
@@ -696,26 +712,23 @@ def set_up_fit(Data, fixed_effect = 'block', noise_cov = None):
     return [Z, X, YY, n_channel, Noise, G_hat]
 
 def set_up_fit_group(Data, fixed_effect = 'block', noise_cov = None):
-    """
-    Pre-calculates and sets design matrices, etc for the PCM fit for a full group
-   Parameters:
+    """Pre-calculates and sets design matrices, etc for the PCM fit for a full group
+
+    Parameters:
         Data (list of pcm.dataset):
             Contains activity data (measurement), and obs_descriptors partition and condition
         fixed_effect:
             Can be None, 'block', or a design matrix. 'block' includes an intercept for each partition.
         noise_cov:
             Can be None: (i.i.d noise), 'block': a common noise paramter or a List of noise covariances for the different partitions
+
     Returns:
-        Z:
-            np.array of esign matrix for random effects
-        X:
-            np.array of Design matrix for fixed effects
-        YY:
-            np.array of Quadratic form of the data (Y Y')
-        Noise:
-            np.array of Noise model
-        G_hat:
-            Crossvalidated estimate of second moment of U
+        Z (np.array): Design matrix for random effects
+        X (np.array): Design matrix for fixed effects
+        YY (np.array): Quadratic form of the data (Y Y')
+        Noise (NoiseModel): Noise model
+        G_hat (np.array): Crossvalidated estimate of second moment of U
+
     """
     n_subj = len(Data)
     Z = np.empty((n_subj,),dtype=object)

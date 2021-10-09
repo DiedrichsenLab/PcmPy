@@ -6,8 +6,8 @@ Definition of PCM Dataset class and subclasses
 """
 
 class Dataset:
-    """
-    Dataset class.
+    """Class for holding a single data set with observation descriptors.
+
     Defines members that every class needs to have, but does not
     implement any interesting behavior. Defines a light version of the RSA
     Dataset class (which could be used instead)

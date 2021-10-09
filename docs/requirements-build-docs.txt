@@ -7,3 +7,4 @@ matplotlib
 ipykernel
 nbsphinx
 scipy
+seaborn

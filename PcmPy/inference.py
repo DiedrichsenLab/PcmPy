@@ -6,7 +6,6 @@ Inference module for PCM toolbox with main functionality for model fitting and e
 import numpy as np
 from numpy.linalg import solve, eigh, cholesky
 from numpy import sum, diag, log, eye, exp, trace, einsum
-from PcmPy import model
 import PcmPy as pcm
 import pandas as pd
 

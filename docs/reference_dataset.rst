@@ -3,5 +3,5 @@
 Dataset module
 =================================
 
-.. automodule:: PcmPy.dataset
+.. automodule:: dataset
    :members:

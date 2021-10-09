@@ -3,5 +3,5 @@
 Inference module
 =================================
 
-.. automodule:: PcmPy.inference
+.. automodule:: inference
    :members:

@@ -6,22 +6,22 @@ Module that defines PCM Model classes and NoiseModel classes
 
 Model Classes
 -------------
-.. autoclass:: model.Model
+.. autoclass:: Model
    :members:
 
-.. autoclass:: PcmPy.model.FixedModel
+.. autoclass:: FixedModel
    :members:
 
-.. autoclass:: model.ComponentModel
+.. autoclass:: ComponentModel
    :members:
 
-.. autoclass:: model.FeatureModel
+.. autoclass:: FeatureModel
    :members:
 
-.. autoclass:: model.CorrelationModel
+.. autoclass:: CorrelationModel
    :members:
 
-.. autoclass:: model.FreeModel
+.. autoclass:: FreeModel
    :members:
 
 

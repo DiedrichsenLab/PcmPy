@@ -3,5 +3,5 @@
 Matrix module
 =================================
 
-.. automodule:: PcmPy.matrix
+.. automodule:: matrix
    :members:

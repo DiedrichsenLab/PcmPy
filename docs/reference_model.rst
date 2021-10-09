@@ -9,13 +9,13 @@ Model Classes
 .. autoclass:: model.Model
    :members:
 
-.. autoclass:: model.FixedModel 
+.. autoclass:: PcmPy.model.FixedModel
    :members:
 
-.. autoclass:: model.ComponentModel 
+.. autoclass:: model.ComponentModel
    :members:
 
-.. autoclass:: model.FeatureModel 
+.. autoclass:: model.FeatureModel
    :members:
 
 .. autoclass:: model.CorrelationModel

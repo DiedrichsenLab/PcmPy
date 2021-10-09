@@ -6,12 +6,12 @@ Inference module for PCM toolbox with main functionality for model fitting and e
 import numpy as np
 from numpy.linalg import solve, eigh, cholesky
 from numpy import sum, diag, log, eye, exp, trace, einsum
-import PcmPy as pcm
 import pandas as pd
+from PcmPy.model import IndependentNoise
 
 
 def likelihood_individ(theta, M, YY, Z, X=None,
-                       Noise = model.IndependentNoise(),
+                       Noise = IndependentNoise(),
                        n_channel=1, fit_scale=False, scale_prior = 1e3, return_deriv=0):
     """Negative Log-Likelihood of the data and derivative in respect to the parameters
 
@@ -151,7 +151,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
         raise NameError('return_deriv needs to be 0, 1 or 2')
 
 def likelihood_group(theta, M, YY, Z, X=None,
-                       Noise=model.IndependentNoise(),
+                       Noise=IndependentNoise(),
                        n_channel=1, fit_scale=True, scale_prior=1e3,
                        return_deriv=0,return_individ=False):
     """Negative Log-Likelihood of group data and derivative in respect to the parameters

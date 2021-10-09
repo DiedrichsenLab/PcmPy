@@ -6,22 +6,22 @@ Module that defines PCM Model classes and NoiseModel classes
 
 Model Classes
 -------------
-.. autoclass:: Model
+.. autoclass:: model.Model
    :members:
 
-.. autoclass:: FixedModel
+.. autoclass:: model.FixedModel
    :members:
 
-.. autoclass:: ComponentModel
+.. autoclass:: model.ComponentModel
    :members:
 
-.. autoclass:: FeatureModel
+.. autoclass:: model.FeatureModel
    :members:
 
-.. autoclass:: CorrelationModel
+.. autoclass:: model.CorrelationModel
    :members:
 
-.. autoclass:: FreeModel
+.. autoclass:: model.FreeModel
    :members:
 
 

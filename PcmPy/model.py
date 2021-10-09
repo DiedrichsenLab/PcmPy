@@ -54,7 +54,7 @@ class FeatureModel(Model):
         Calculation of G
 
         Args:
-            theta (numpy.ndarray)
+            theta (np.ndarray)
                 Vector of model parameters
         Returns:
             G (np.ndarray):
@@ -307,8 +307,6 @@ class FixedModel(Model):
                 name of the particular model for indentification
             G (numpy.ndarray)
                 2-dimensional array giving the predicted second moment
-        Returns:
-            Model object
         """
 
         Model.__init__(self,name)
@@ -324,8 +322,7 @@ class FixedModel(Model):
         Returns:
             G (np.ndarray)
                 2-dimensional (K,K) array of predicted second moment
-            dG_dTheta
-                None
+            dG_dTheta (None)
         """
 
         return (self.G,None)
@@ -343,8 +340,6 @@ class FreeModel(Model):
                 name of the particular model for indentification
             n_cond (int)
                 number of conditions for free model
-        Returns:
-            Model object
         """
         Model.__init__(self,name)
         self.n_cond = n_cond

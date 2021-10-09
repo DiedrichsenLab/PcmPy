@@ -287,7 +287,7 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
         verbose (bool):
             Provide printout of progress? Default: True
 
-    Returns
+    Returns:
         T (pandas.dataframe):
             Dataframe with the fields:
             SN:                 Subject number
@@ -657,19 +657,15 @@ def set_up_fit(Data, fixed_effect = 'block', noise_cov = None):
             Can be None: (i.i.d noise), 'block': a common noise paramter or a List of noise covariances for the different partitions
 
     Returns:
-        Z:
+        Z (np.array):
             Design matrix for random effects
-
-        X:
+        X (np.array):
             Design matrix for fixed effects
-
-        YY:
+        YY (np.array):
             Quadratic form of the data (Y Y')
-
-        Noise:
+        Noise (pcm.model.NoiseModel):
             Noise model
-
-        G_hat:
+        G_hat (np.array):
             Crossvalidated estimate of second moment of U
 
     """

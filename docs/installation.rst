@@ -18,9 +18,9 @@ If you want to run the tests, you need pytest >= 3.9 and pytest-cov for coverage
 Installation using Pip
 ----------------------
 
-PcmPy is available on PyPi with
+PcmPy is available on PyPi with::
 
-``pip install PcmPy``
+pip install PcmPy
 
 Installation for developers
 ---------------------------

@@ -5,7 +5,6 @@ Functions for visualization of PCM models, Data, and model fits
 @author: jdiedrichsen
 """
 
-import PcmPy as pcm
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches

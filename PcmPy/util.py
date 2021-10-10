@@ -7,7 +7,7 @@ Collection of different utility functions
 """
 
 import numpy as np
-import PcmPy as pcm
+from .matrix import indicator
 from scipy.linalg import solve, pinv
 from numpy.linalg import eigh
 
@@ -42,7 +42,7 @@ def est_G_crossval(Y, Z, part_vec, X=None, S=None):
 
     # Make Z into a design matrix
     if Z.ndim == 1:
-        Z = pcm.matrix.indicator(Z)
+        Z = indicator(Z)
     n_cond = Z.shape[1]
 
     # Allocate memory

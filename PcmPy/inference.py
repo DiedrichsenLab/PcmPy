@@ -7,7 +7,9 @@ import numpy as np
 from numpy.linalg import solve, eigh, cholesky
 from numpy import sum, diag, log, eye, exp, trace, einsum
 import pandas as pd
-from PcmPy.model import IndependentNoise
+import PcmPy as pcm
+from .model import IndependentNoise, BlockPlusIndepNoise
+from .optimize import newton
 
 
 def likelihood_individ(theta, M, YY, Z, X=None,
@@ -358,7 +360,7 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
             if (M[m].algorithm=='newton'):
                 fcn = lambda x: likelihood_individ(x, M[m], YY, Z, X=X,
                                 Noise = Noise, fit_scale = fit_scale, scale_prior = scale_prior, return_deriv = 2,n_channel=n_channel)
-                th, l, INFO = pcm.optimize.newton(th0, fcn, **optim_param)
+                th, l, INFO = newton(th0, fcn, **optim_param)
             else:
                 raise(NameError('not implemented yet'))
 
@@ -449,7 +451,7 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
     # M = pcm.optimize.best_algorithm(M,algorithm)
 
     # Prepare the data for all the subjects
-    Z, X, YY, n_channel, Noise, G_hat = pcm.inference.set_up_fit_group(Data,
+    Z, X, YY, n_channel, Noise, G_hat = set_up_fit_group(Data,
             fixed_effect = fixed_effect, noise_cov = noise_cov)
 
     # Average second moment
@@ -485,7 +487,7 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
         if (M[m].algorithm=='newton'):
             fcn = lambda x: likelihood_group(x, M[m], YY, Z, X=X,
                 Noise = Noise, fit_scale = fit_scale, scale_prior=scale_prior, return_deriv = 2,n_channel=n_channel)
-            theta[m], l, INFO = pcm.optimize.newton(th0, fcn, **optim_param)
+            theta[m], l, INFO = newton(th0, fcn, **optim_param)
         else:
             raise(NameError('not implemented yet'))
 
@@ -623,7 +625,7 @@ def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
             if (M[m].algorithm=='newton'):
                 fcn = lambda x: likelihood_group(x, M[m], YY[notS], Z[notS],
                                             X=X[notS], Noise = Noise[notS], fit_scale = fit_scale, scale_prior = scale_prior, return_deriv = 2, n_channel=n_channel[notS])
-                theta[m][:,s], l, INFO = pcm.optimize.newton(th0, fcn, **optim_param)
+                theta[m][:,s], l, INFO = newton(th0, fcn, **optim_param)
             else:
                 raise(NameError('not implemented yet'))
 
@@ -636,7 +638,7 @@ def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
                 Mindiv = pcm.model.FixedModel('name',G_group) # Make a fixed model
                 p = param_indx == s # Parameters for this subject
                 fcn = lambda x: likelihood_individ(x, Mindiv, YY[s], Z[s], X=X[s], Noise = Noise[s], n_channel=n_channel[s], fit_scale = fit_scale, scale_prior = scale_prior, return_deriv = 2)
-                thi, l, INF2 = pcm.optimize.newton(th0[p], fcn, **optim_param)
+                thi, l, INF2 = newton(th0[p], fcn, **optim_param)
             # record results into the array
             T['likelihood',m_names[m]][s] = l
             if (fit_scale):
@@ -693,9 +695,9 @@ def set_up_fit(Data, fixed_effect = 'block', noise_cov = None):
 
     # Now choose the noise model
     if noise_cov is None:
-        Noise = model.IndependentNoise()
+        Noise = IndependentNoise()
     elif noise_cov == 'block':
-        Noise = model.BlockPlusIndepNoise(part_vec)
+        Noise = BlockPlusIndepNoise(part_vec)
     else:
         raise(NameError('Arbitrary covariance matrices are not yet implemented'))
 

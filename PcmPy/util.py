@@ -7,7 +7,7 @@ Collection of different utility functions
 """
 
 import numpy as np
-from .matrix import indicator
+from PcmPy.matrix import indicator
 from scipy.linalg import solve, pinv
 from numpy.linalg import eigh
 

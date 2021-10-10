@@ -8,8 +8,8 @@ from numpy.linalg import solve, eigh, cholesky
 from numpy import sum, diag, log, eye, exp, trace, einsum
 import pandas as pd
 import PcmPy as pcm
-from .model import IndependentNoise, BlockPlusIndepNoise
-from .optimize import newton
+from PcmPy.model import IndependentNoise, BlockPlusIndepNoise
+from PcmPy.optimize import newton
 
 
 def likelihood_individ(theta, M, YY, Z, X=None,

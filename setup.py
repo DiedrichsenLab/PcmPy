@@ -4,7 +4,7 @@ setup(
   packages = ['PcmPy'],
   version = '0.9.1',
   license='MIT',
-  description = 'Modeling of multivariate activity patterns',
+  description = 'Pattern Component Modeling of multivariate activity patterns',
   author = 'Jörn Diedrichsen',
   author_email = 'joern.diedrichsen@googlemail.com',
   url = 'https://github.com/DiedrichsenLab/PCMPy',

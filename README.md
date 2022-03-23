@@ -5,7 +5,7 @@ Pattern component modeling (PCM) is a likelihood approach for evaluating represe
 Full documentation can be found on:
 [https://pcm-toolbox-python.readthedocs.io]
 
-For a verions of this toolbox in Matlab, For a version of the toolbox in Python, see [https://github.com/jdiedrichsen/pcm_toolbox].
+For a verion of this toolbox in Matlab, see [https://github.com/jdiedrichsen/pcm_toolbox].
 
 ### Licence and Acknowledgements
 The PCMPy toolbox is being developed by members of the Diedrichsenlab including Jörn Diedrichsen, Giacomo Ariani, Spencer Arbuckle, Eva Berlot, and Atsushi Yokoi. It is distributed under MIT License, meaning that it can be freely used and re-used, as long as proper attribution in form of acknowledgments and links (for online use) or citations (in publications) are given. The relevant references are:

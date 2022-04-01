@@ -440,9 +440,9 @@ class RidgeDiag:
         self.noise_model = noise_model
         self.n_param = max(components)+1+self.noise_model.n_param
         self.noise_idx = np.arange(max(components)+1,self.n_param)
+        self.fit_intercept = fit_intercept
         self.theta0_ = np.zeros((self.n_param,)) # Empty theta0
         self.theta_  = None
-        self.fit_intercept = fit_intercept
 
     def optimize_regularization(self, Z , Y, X = None, optim_param = {}, like_fcn = 'auto'):
         """
@@ -508,7 +508,7 @@ class RidgeDiag:
                 Model with fitted parameters
 
         """
-        if (self.theta is None):
+        if (self.theta_ is None):
             raise NameError('Regularisation parameters (theta) need to be optimized with optimize_regulularization or set')
         N = Z.shape[0]
         Z, X = self.add_intercept(Z, X)

@@ -123,3 +123,4 @@ dmypy.json
 # Mac OSX files 
 .DS_Store
 .vscode/
+.vscode/settings.json

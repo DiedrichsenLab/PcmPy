@@ -6,47 +6,49 @@ Inference module for PCM toolbox with main functionality for model fitting and e
 import numpy as np
 from numpy.linalg import solve, eigh, cholesky
 from numpy import sum, diag, log, eye, exp, trace, einsum
-from PcmPy import model
-import PcmPy as pcm
 import pandas as pd
+import PcmPy as pcm
+from PcmPy.model import IndependentNoise, BlockPlusIndepNoise
+from PcmPy.optimize import newton
 
 
 def likelihood_individ(theta, M, YY, Z, X=None,
-                       Noise=model.IndependentNoise(),
+                       Noise = IndependentNoise(),
                        n_channel=1, fit_scale=False, scale_prior = 1e3, return_deriv=0):
-    """
-    Negative Log-Likelihood of the data and derivative in respect to the parameters
+    """Negative Log-Likelihood of the data and derivative in respect to the parameters
 
     Parameters:
-        theta (np.array)
-            Vector of (log-)model parameters: These include model, signal and noise parameters
-        M (pcm.Model)
+        theta (np.array):
+            Vector of (log-)model parameters - these include model, signal, and noise parameters
+        M (PcmPy.model.Model):
             Model object with predict function
-        YY (2d-np.array)
+        YY (2d-np.array):
             NxN Matrix of outer product of the activity data (Y*Y')
-        Z (2d-np.array)
+        Z (2d-np.array):
             NxQ Design matrix - relating the trials (N) to the random effects (Q)
-        X (np.array)
+        X (np.array):
             Fixed effects design matrix - will be accounted for by ReML
-        Noise (pcm.Noisemodel)
-            Pcm-noise mode to model block-effects (default: Indentity)
-        n_channel (int)
+        Noise (pcm.Noisemodel):
+            Pcm-noise mode to model block-effects (default: IndepenentNoise)
+        n_channel (int):
             Number of channels
-        fit_scale (bool)
+        fit_scale (bool):
             Fit a scaling parameter for the model (default is False)
         scale_prior (float):
             Prior variance for log-normal prior on scale parameter
-        return_deriv (int)
+        return_deriv (int):
             0: Only return negative loglikelihood
             1: Return first derivative
             2: Return first and second derivative (default)
 
     Returns:
-        negloglike:
+        negloglike (double):
             Negative log-likelihood of the data under a model
-        dLdtheta (1d-np.array)
+
+        dLdtheta (1d-np.array):
             First derivative of negloglike in respect to the parameters
-        ddLdtheta2 (2d-np.array)
+
+        ddLdtheta2 (2d-np.array):
             Second derivative of negloglike in respect to the parameters
 
     """
@@ -151,21 +153,16 @@ def likelihood_individ(theta, M, YY, Z, X=None,
         raise NameError('return_deriv needs to be 0, 1 or 2')
 
 def likelihood_group(theta, M, YY, Z, X=None,
-                       Noise=model.IndependentNoise(),
+                       Noise=IndependentNoise(),
                        n_channel=1, fit_scale=True, scale_prior=1e3,
                        return_deriv=0,return_individ=False):
-    """
-    Negative Log-Likelihood of group data and derivative in respect to the parameters
+    """Negative Log-Likelihood of group data and derivative in respect to the parameters
 
     Parameters:
         theta (np.array):
-            Vector of (log-)model parameters consisting of
-                Common model parameters
-                    M.n_param or sum(M.common_param)
-                Participant-specific parameters (interated by subject)
-                    unqiue model parameters (not in common_param)
-                    scale parameter
-                    noise parameters
+            Vector of (log-)model parameters consisting of common model parameters (M.n_param or sum of M.common_param),
+            participant-specific parameters (interated by subject), unique model parameters (not in common_param),
+            scale parameter,noise parameters
         M (pcm.Model):
             Model object
         YY (List of np.arrays):
@@ -175,7 +172,7 @@ def likelihood_group(theta, M, YY, Z, X=None,
         X (List of np.array):
             Fixed effects design matrix - will be accounted for by ReML
         Noise (List of pcm.Noisemodel):
-            Pcm-noise mode to model block-effects (default: Indentity)
+            Pcm-noise model (default: IndependentNoise)
         n_channel (List of int):
             Number of channels
         fit_scale (bool):
@@ -186,18 +183,23 @@ def likelihood_group(theta, M, YY, Z, X=None,
             0: Only return negative likelihood
             1: Return first derivative
             2: Return first and second derivative (default)
-        return_individ (bool)
+        return_individ (bool):
             return individual likelihoods instead of group likelihood
-                    return_deriv (int)
+        return_deriv (int):
+            0:None, 1:First, 2: second
+
     Returns:
         negloglike:
             Negative log-likelihood of the data under a model
+
         dLdtheta (1d-np.array)
             First derivative of negloglike in respect to the parameters
+
         ddLdtheta2 (2d-np.array)
             Second derivative of negloglike in respect to the parameters
 
     """
+
     n_subj = len(YY)
     n_param = theta.shape[0]
 
@@ -257,23 +259,20 @@ def likelihood_group(theta, M, YY, Z, X=None,
         ra.append(np.sum(dFdhh,axis=0)) # Second derivative
     return ra
 
-def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
-                    scale_prior = 1e3, noise_cov=None, algorithm=None, optim_param={}, theta0=None):
-    """
-    Fits pattern component model(s) specified by M to data from a number of
-    subjects.The model parameters are all individually fit.
+def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
+                    scale_prior = 1e3, noise_cov=None, algorithm=None,
+                    optim_param={}, theta0=None, verbose = True):
+    """Fits Models to a data set inidividually.
 
-    Paramaeters:
+    The model parameters are all individually fit.
+
+    Parameters:
         Data (pcm.Dataset or list of pcm.Datasets):
             List data set has partition and condition descriptors
         M (pcm.Model or list of pcm.Models):
             Models to be fitted on the data sets
-        run_effect (string):
-            'random': Models variance of the run effect for each subject
-                as a seperate random effects parameter.
-            'fixed': Consider run effect a fixed effect, will be removed
-                 implicitly using ReML.
-            'none': No modeling of the run Effect
+        fixed effect:
+            None, 'block', or nd-array. Default ('block') adds an intercept for each partition
         fit_scale (bool):
             Fit a additional scale parameter for each subject? Default is set to False.
         scale_prior (float):
@@ -281,12 +280,15 @@ def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
         algorithm (string):
             Either 'newton' or 'minimize' - provides over-write for model specific algorithms
         noise_cov:
-            Optional specific covariance structure of the noise
+            None (i.i.d), 'block', or optional specific covariance structure of the noise
         optim_param (dict):
             Additional paramters to be passed to the optimizer
         theta0 (list of np.arrays):
             List of starting values (same format as return argument theta)
-    Returns
+        verbose (bool):
+            Provide printout of progress? Default: True
+
+    Returns:
         T (pandas.dataframe):
             Dataframe with the fields:
             SN:                 Subject number
@@ -296,11 +298,14 @@ def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
             run:                Run parameter (if run = 'random')
             iterations:         Number of interations for model fit
             time:               Elapsed time in sec
+
         theta (list of np.arrays):
             List of estimated model parameters, each a
             #params x #numSubj np.array
+
         G_pred (list of np.arrays):
             List of estimated G-matrices under the model
+
     """
 
     # Get the number of subjects
@@ -334,10 +339,11 @@ def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
     # Loop over subject and models and provide inidivdual fits
     for s in range(n_subj):
         Z,X,YY,n_channel,Noise,G_hat = set_up_fit(Data[s],
-                                                run_effect = run_effect,
+                                                fixed_effect = fixed_effect,
                                                 noise_cov = noise_cov)
         for m in range(n_model):
-            print('Fitting Subj',s,'model',m)
+            if verbose:
+                print('Fitting Subj',s,'model',m)
             # Get starting guess for theta0 is not provideddf
             if (theta0 is None) or (len(theta0) <= m) or (theta0[m].shape[1]<s):
                 M[m].set_theta0(G_hat)
@@ -354,7 +360,7 @@ def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
             if (M[m].algorithm=='newton'):
                 fcn = lambda x: likelihood_individ(x, M[m], YY, Z, X=X,
                                 Noise = Noise, fit_scale = fit_scale, scale_prior = scale_prior, return_deriv = 2,n_channel=n_channel)
-                th, l, INFO = pcm.optimize.newton(th0, fcn, **optim_param)
+                th, l, INFO = newton(th0, fcn, **optim_param)
             else:
                 raise(NameError('not implemented yet'))
 
@@ -368,10 +374,11 @@ def fit_model_individ(Data, M, run_effect='fixed', fit_scale=False,
                 T.loc[s,('scale',m_names[m])] = exp(th[M[m].n_param])
     return [T,theta]
 
-def fit_model_group(Data, M, run_effect='fixed', fit_scale=False,
-                    scale_prior = 1e3, noise_cov=None, algorithm=None, optim_param={}, theta0=None):
-    """
-    Fits pattern component model(s) specified by M to a group of subjects
+def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
+                    scale_prior = 1e3, noise_cov=None, algorithm=None,
+                    optim_param={}, theta0=None, verbose=True):
+    """ Fits PCM models(s) to a group of subjects
+
     The model parameters are (by default) shared across subjects.
     Scale and noise parameters are individual for each subject.
     Some model parameters can also be made individual by setting M.common_param
@@ -381,12 +388,8 @@ def fit_model_group(Data, M, run_effect='fixed', fit_scale=False,
             List data set has partition and condition descriptors
         M (pcm.Model or list of pcm.Models):
             Models to be fitted on the data sets. Optional field M.common_param indicates which model parameters are common to the group (True) and which ones are fit individually (False)
-        run_effect (string):
-            'random': Models variance of the run effect for each subject
-                as a seperate random effects parameter.
-            'fixed': Consider run effect a fixed effect, will be removed
-                 implicitly using ReML.
-            'none': No modeling of the run Effect
+        fixed effect:
+            None, 'block', or nd-array / list of nd-arrays. Default ('block') add an intercept for each partition
         fit_scale (bool):
             Fit a additional scale parameter for each subject? Default is set to False.
         scale_prior (float):
@@ -394,13 +397,15 @@ def fit_model_group(Data, M, run_effect='fixed', fit_scale=False,
         algorithm (string):
             Either 'newton' or 'minimize' - provides over-write for model specific algorithms
         noise_cov:
-            Optional specific covariance structure of the noise
-            List of N_s x N_s matrices
+            None (i.i.d), 'block', or optional specific covariance structure of the noise
         optim_param (dict):
             Additional paramters to be passed to the optimizer
         theta0 (list of np.arrays):
             List of starting values (same format as return argument theta)
-    Returns
+        verbose (bool):
+            Provide printout of progress? Default: True
+
+    Returns:
         T (pandas.dataframe):
             Dataframe with the fields:
             SN:                 Subject number
@@ -409,8 +414,10 @@ def fit_model_group(Data, M, run_effect='fixed', fit_scale=False,
             noise:              Noise parameter- exp(theta_eps)
             iterations:         Number of interations for model fit
             time:               Elapsed time in sec
+
         theta (list of np.arrays):
             List of estimated model parameters, each a
+
         G_pred (list of np.arrays):
             List of estimated G-matrices under the model
     """
@@ -444,7 +451,8 @@ def fit_model_group(Data, M, run_effect='fixed', fit_scale=False,
     # M = pcm.optimize.best_algorithm(M,algorithm)
 
     # Prepare the data for all the subjects
-    Z, X, YY, n_channel, Noise, G_hat = pcm.inference.set_up_fit_group(Data, run_effect = run_effect, noise_cov = noise_cov)
+    Z, X, YY, n_channel, Noise, G_hat = set_up_fit_group(Data,
+            fixed_effect = fixed_effect, noise_cov = noise_cov)
 
     # Average second moment
     G_avrg = sum(G_hat, axis=0) / n_subj
@@ -454,7 +462,8 @@ def fit_model_group(Data, M, run_effect='fixed', fit_scale=False,
     indx_noise = [None] * n_subj
 
     for m in range(n_model):
-        print('Fitting model',m)
+        if verbose:
+            print('Fitting model',m)
         # Get starting guess for theta0 is not provided
         if hasattr(M[m],'common_param'):
             common = M[m].common_param
@@ -478,7 +487,7 @@ def fit_model_group(Data, M, run_effect='fixed', fit_scale=False,
         if (M[m].algorithm=='newton'):
             fcn = lambda x: likelihood_group(x, M[m], YY, Z, X=X,
                 Noise = Noise, fit_scale = fit_scale, scale_prior=scale_prior, return_deriv = 2,n_channel=n_channel)
-            theta[m], l, INFO = pcm.optimize.newton(th0, fcn, **optim_param)
+            theta[m], l, INFO = newton(th0, fcn, **optim_param)
         else:
             raise(NameError('not implemented yet'))
 
@@ -491,10 +500,12 @@ def fit_model_group(Data, M, run_effect='fixed', fit_scale=False,
             T['scale',m_names[m]] = exp(theta[m][indx_scale])
     return [T,theta]
 
-def fit_model_group_crossval(Data, M, run_effect='fixed', fit_scale=False,
-                    scale_prior = 1e3, noise_cov=None, algorithm=None, optim_param={}, theta0=None):
-    """
-    Fits pattern component model(s) specified by M to N-1 subjects and evaluates the likelihood on the Nth subject. Only the common model parameters are shared across subjects.The scale and noise parameters
+def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
+                    scale_prior = 1e3, noise_cov=None, algorithm=None,
+                    optim_param={}, theta0=None, verbose=True):
+    """Fits PCM model(sto N-1 subjects and evaluates the likelihood on the Nth subject.
+
+    Only the common model parameters are shared across subjects.The scale and noise parameters
     are still fitted to each subject. Some model parameters can also be made individual by setting M.common_param
 
     Parameters:
@@ -502,12 +513,8 @@ def fit_model_group_crossval(Data, M, run_effect='fixed', fit_scale=False,
             List data set has partition and condition descriptors
         M (pcm.Model or list of pcm.Models):
             Models to be fitted on the data sets. Optional field M.common_param indicates which model parameters are common to the group (True) and which ones are fit individually (False)
-        run_effect (string):
-            'random': Models variance of the run effect for each subject
-                as a seperate random effects parameter.
-            'fixed': Consider run effect a fixed effect, will be removed
-                 implicitly using ReML.
-            'none': No modeling of the run Effect
+        fixed effect:
+            None, 'block', or nd-array. Default ('block') add an intercept for each partition
         fit_scale (bool):
             Fit a additional scale parameter for each subject? Default is set to False.
         scale_prior (float):
@@ -515,12 +522,14 @@ def fit_model_group_crossval(Data, M, run_effect='fixed', fit_scale=False,
         algorithm (string):
             Either 'newton' or 'minimize' - provides over-write for model specific algorithms
         noise_cov:
-            Optional specific covariance structure of the noise
-            List of N_s x N_s matrices
+            None (i.i.d), 'block', or optional specific covariance structure of the noise
         optim_param (dict):
             Additional paramters to be passed to the optimizer
         theta0 (list of np.arrays):
             List of starting values (same format as return argument theta)
+        verbose (bool):
+            Provide printout of progress? Default: True
+
     Returns:
         T (pandas.dataframe):
             Dataframe with the fields:
@@ -530,10 +539,13 @@ def fit_model_group_crossval(Data, M, run_effect='fixed', fit_scale=False,
             noise:              Noise parameter- exp(theta_eps)
             iterations:         Number of interations for model fit
             time:               Elapsed time in sec
+
         theta (list of np.arrays):
             List of estimated model parameters - common group parameters come from the training data, scale and noise parameter from the testing data
+
         G_pred (list of np.arrays):
             List of estimated G-matrices under the model
+
     """
 
     # Get the number of subjects
@@ -563,12 +575,13 @@ def fit_model_group_crossval(Data, M, run_effect='fixed', fit_scale=False,
 
     # Determine optimal algorithm for each of the models
     # M = pcm.optimize.best_algorithm(M,algorithm)
-    Z, X, YY, n_channel, Noise, G_hat = set_up_fit_group(Data, run_effect = run_effect, noise_cov = None)
+    Z, X, YY, n_channel, Noise, G_hat = set_up_fit_group(Data, fixed_effect = fixed_effect, noise_cov = None)
 
     # Get starting values as for a group fit
     G_avrg = sum(G_hat, axis=0) / n_subj
     for m in range(n_model):
-        print('Fitting model',m)
+        if verbose:
+            print('Fitting model',m)
 
         # Get starting guess for theta0 is not provided
         if hasattr(M[m],'common_param'):
@@ -612,7 +625,7 @@ def fit_model_group_crossval(Data, M, run_effect='fixed', fit_scale=False,
             if (M[m].algorithm=='newton'):
                 fcn = lambda x: likelihood_group(x, M[m], YY[notS], Z[notS],
                                             X=X[notS], Noise = Noise[notS], fit_scale = fit_scale, scale_prior = scale_prior, return_deriv = 2, n_channel=n_channel[notS])
-                theta[m][:,s], l, INFO = pcm.optimize.newton(th0, fcn, **optim_param)
+                theta[m][:,s], l, INFO = newton(th0, fcn, **optim_param)
             else:
                 raise(NameError('not implemented yet'))
 
@@ -622,10 +635,10 @@ def fit_model_group_crossval(Data, M, run_effect='fixed', fit_scale=False,
             else:
                 thm = theta[m][param_indx==-1, s] # Common model parameter
                 G_group, _ = M[m].predict(thm) # Predicted second moment matrix
-                Mindiv = pcm.ModelFixed('name',G_group) # Make a fixed model
+                Mindiv = pcm.model.FixedModel('name',G_group) # Make a fixed model
                 p = param_indx == s # Parameters for this subject
                 fcn = lambda x: likelihood_individ(x, Mindiv, YY[s], Z[s], X=X[s], Noise = Noise[s], n_channel=n_channel[s], fit_scale = fit_scale, scale_prior = scale_prior, return_deriv = 2)
-                thi, l, INF2 = pcm.optimize.newton(th0[p], fcn, **optim_param)
+                thi, l, INF2 = newton(th0[p], fcn, **optim_param)
             # record results into the array
             T['likelihood',m_names[m]][s] = l
             if (fit_scale):
@@ -633,35 +646,36 @@ def fit_model_group_crossval(Data, M, run_effect='fixed', fit_scale=False,
             T['noise',m_names[m]][s] = exp(thi[int(fit_scale)])
     return [T,theta]
 
-def set_up_fit(Data, run_effect = 'none', noise_cov = None):
-    """
-    Utility routine pre-calculates and sets design matrices, etc for the PCM fit
+def set_up_fit(Data, fixed_effect = 'block', noise_cov = None):
+    """Utility routine pre-calculates and sets design matrices, etc for the PCM fit
 
     Parameters:
         Data (pcm.dataset):
             Contains activity data (measurement), and obs_descriptors partition and condition
-        run_effect:
-            For fmri data can be 'none', 'random', or 'fixed'
+        fixed_effect:
+            Can be None, 'block', or a design matrix. 'block' includes an intercept for each partition.
         noise_cov:
-            List of noise covariances for the different partitions
+            Can be None: (i.i.d noise), 'block': a common noise paramter or a List of noise covariances for the different partitions
+
     Returns:
-        Z:
+        Z (np.array):
             Design matrix for random effects
-        X:
+        X (np.array):
             Design matrix for fixed effects
-        YY:
+        YY (np.array):
             Quadratic form of the data (Y Y')
-        Noise:
+        Noise (pcm.model.NoiseModel):
             Noise model
-        G_hat:
+        G_hat (np.array):
             Crossvalidated estimate of second moment of U
+
     """
 
     # Make design matrix
     cV = Data.obs_descriptors['cond_vec']
     if cV.ndim == 1:
         Z = pcm.matrix.indicator(cV)
-    elif cv.ndim == 2:
+    elif cV.ndim == 2:
         Z = cV
     n_reg = Z.shape[1]
 
@@ -671,22 +685,21 @@ def set_up_fit(Data, run_effect = 'none', noise_cov = None):
     YY = Y @ Y.T
 
     # Initialize fixed effects
-    X = None
-
-    #  Depending on the way of dealing with the run effect, set up matrices and noise
     part_vec = Data.obs_descriptors['part_vec']
-    if run_effect == 'fixed':
+    if fixed_effect is None:
+        X = None
+    elif fixed_effect=='block':
         X = pcm.matrix.indicator(part_vec)
-    if run_effect == 'none' or run_effect == 'fixed':
-        if noise_cov is None:
-            Noise = model.IndependentNoise()
-        else:
-            raise(NameError('not implemented'))
-    if run_effect == 'random':
-        if noise_cov is None:
-            Noise = model.BlockPlusIndepNoise(part_vec)
-        else:
-            raise(NameError('not implemented'))
+    else:
+        X = fixed_effect
+
+    # Now choose the noise model
+    if noise_cov is None:
+        Noise = IndependentNoise()
+    elif noise_cov == 'block':
+        Noise = BlockPlusIndepNoise(part_vec)
+    else:
+        raise(NameError('Arbitrary covariance matrices are not yet implemented'))
 
     # Get a cross-validated estimate of G
     G_hat, _ = pcm.util.est_G_crossval(Y, Z, part_vec, X = X)
@@ -695,28 +708,24 @@ def set_up_fit(Data, run_effect = 'none', noise_cov = None):
     Noise.set_theta0(Y,Z,X)
     return [Z, X, YY, n_channel, Noise, G_hat]
 
-def set_up_fit_group(Data, run_effect = 'none', noise_cov = None):
-    """
-    Pre-calculates and sets design matrices, etc for the PCM fit for a full group
+def set_up_fit_group(Data, fixed_effect = 'block', noise_cov = None):
+    """Pre-calculates and sets design matrices, etc for the PCM fit for a full group
 
     Parameters:
         Data (list of pcm.dataset):
             Contains activity data (measurement), and obs_descriptors partition and condition
-        run_effect:
-            For fmri data can be 'none', 'random', or 'fixed'
+        fixed_effect:
+            Can be None, 'block', or a design matrix. 'block' includes an intercept for each partition.
         noise_cov:
-            List of noise covariances for the different data sets
+            Can be None: (i.i.d noise), 'block': a common noise paramter or a List of noise covariances for the different partitions
+
     Returns:
-        Z:
-            np.array of design matrices for random effects
-        X:
-            np.array of design matrices for fixed effects
-        YY:
-            np.arrays of quadratic forms of the data (Y Y')
-        Noise:
-            np.array of noise model
-        G_hat:
-            np.array of crossvalidated estimate of second moment of U
+        Z (np.array): Design matrix for random effects
+        X (np.array): Design matrix for fixed effects
+        YY (np.array): Quadratic form of the data (Y Y')
+        Noise (NoiseModel): Noise model
+        G_hat (np.array): Crossvalidated estimate of second moment of U
+
     """
     n_subj = len(Data)
     Z = np.empty((n_subj,),dtype=object)
@@ -725,10 +734,17 @@ def set_up_fit_group(Data, run_effect = 'none', noise_cov = None):
     n_channel = np.zeros((n_subj,),dtype=int)
     G_hat = np.empty((n_subj,),dtype=object)
     Noise = np.empty((n_subj,),dtype=object)
-    if noise_cov is None:
-        noise_cov = np.empty((n_subj,),dtype=object)
     for s in range(n_subj):
-        Z[s], X[s], YY[s], n_channel[s], Noise[s], G_hat[s] = pcm.inference.set_up_fit(Data[s],run_effect = run_effect,noise_cov = noise_cov[s])
+        if type(fixed_effect) is list:
+            fe = fixed_effect[s]
+        else:
+            fe = fixed_effect
+        if type(noise_cov) is list:
+            nc = noise_cov[s]
+        else:
+            nc = noise_cov
+        Z[s], X[s], YY[s], n_channel[s], Noise[s], G_hat[s] = pcm.inference.set_up_fit(Data[s],
+                    fixed_effect = fe, noise_cov = nc)
     return Z, X ,YY, n_channel, Noise, G_hat
 
 def get_scale0(G,G_hat):

@@ -11,10 +11,20 @@ import unittest
 import PcmPy as pcm
 import numpy as np
 import pickle
+import os 
 
-f = open('/Users/jdiedrichsen/Python/PcmPy/demos/data_finger7T.p','rb')
-Y,M = pickle.load(f)
+base_dir = os.path.dirname(os.path.dirname(__file__))
+data_file = os.path.join(base_dir,'docs','demos','data_demo_finger7T.p')
+f = open(data_file,'rb')
+Data,cond_vec,part_vec,modelM = pickle.load(f)
 f.close()
+
+# Make the data 
+Y = list()
+for i in range(len(Data)):
+    obs_des = {'cond_vec': cond_vec[i],
+               'part_vec': part_vec[i]}
+    Y.append(pcm.dataset.Dataset(Data[i],obs_descriptors = obs_des))
 
 class TestInference(unittest.TestCase):
 
@@ -24,17 +34,18 @@ class TestInference(unittest.TestCase):
         Z = pcm.matrix.indicator(Y[0].obs_descriptors['cond_vec'])
         X = pcm.matrix.indicator(Y[0].obs_descriptors['part_vec'])
         theta = np.array([-0.5,0.5])
-        lik,dL,d2L = pcm.inference.likelihood_individ(theta, M[0], YY, Z, X=X,
+        M = pcm.model.FixedModel('muscle',modelM[0])
+        lik,dL,d2L = pcm.inference.likelihood_individ(theta, M, YY, Z, X=X,
             n_channel=n_channel, return_deriv = 2,fit_scale=True)
-        self.assertAlmostEqual(lik,46697.979838372456)
-        self.assertAlmostEqual(dL[0],248.82177294654605)
+        self.assertAlmostEqual(lik,46697.979963372454)
+        self.assertAlmostEqual(dL[0],248.82127294654595)
         self.assertAlmostEqual(dL[1],13637.404410177838)
         self.assertAlmostEqual(d2L[0,0],409.189721036659)
         self.assertAlmostEqual(d2L[0,1],750.509995737473)
         self.assertAlmostEqual(d2L[1,1],29275.840725272497)
 
     def test_component_lik(self):
-        MC=pcm.ModelComponent('muscle',M[0].G)
+        MC=pcm.model.ComponentModel('muscle',modelM[0])
         YY = Y[0].measurements @ Y[0].measurements.T
         n_channel = Y[0].measurements.shape[1]
         Z = pcm.matrix.indicator(Y[0].obs_descriptors['cond_vec'])
@@ -50,7 +61,7 @@ class TestInference(unittest.TestCase):
         self.assertAlmostEqual(d2L[1,1],29275.840725272497)
 
     def test_block_noise(self):
-        MC=pcm.ModelComponent('muscle',M[0].G)
+        MC=pcm.model.ComponentModel('muscle',modelM[0].G)
         YY = Y[0].measurements @ Y[0].measurements.T
         n_channel = Y[0].measurements.shape[1]
         Z = pcm.matrix.indicator(Y[0].obs_descriptors['cond_vec'])
@@ -65,15 +76,15 @@ class TestInference(unittest.TestCase):
 
     def test_fit_model_individ(self):
         MC = []
-        MC.append(pcm.ModelComponent('muscle',M[0].G))
-        MC.append(pcm.ModelComponent('natural',M[1].G))
-        MC.append(pcm.ModelComponent('muscle+nat',[M[0].G,M[1].G]))
+        MC.append(pcm.model.ComponentModel('muscle',modelM[0]))
+        MC.append(pcm.model.ComponentModel('natural',modelM[1]))
+        MC.append(pcm.model.ComponentModel('muscle+nat',[modelM[0],modelM[1]]))
         theta0 = [np.ones((2,7)) * np.array([[-1,0.1]]).T]*2
         T, theta = pcm.inference.fit_model_individ(Y,MC,theta0=theta0)
-        self.assertAlmostEqual(T.likelihood[0][1],-34923.790708900)
+        self.assertAlmostEqual(T.likelihood['muscle'][1],-34923.7907087297)
 
     def test_likelihood_group(self):
-        MC = pcm.ModelComponent('muscle+nat',[M[0].G,M[1].G])
+        MC = pcm.ComponentModel('muscle+nat',[M[0].G,M[1].G])
         MC.common_param=[True,False]
         n_subj = len(Y)
         Z = [None]*n_subj
@@ -93,15 +104,18 @@ class TestInference(unittest.TestCase):
 
     def test_fit_model_group(self):
         MC = []
-        MC.append(pcm.ModelComponent('muscle',M[0].G))
-        MC.append(pcm.ModelComponent('natural',M[1].G))
-        MC.append(pcm.ModelComponent('muscle+nat',[M[0].G,M[1].G]))
-        MC.append(pcm.ModelComponent('muscle+nat_2',[M[0].G,M[1].G]))
+        MC.append(pcm.ComponentModel('muscle',modelM[0]))
+        MC.append(pcm.ComponentModel('natural',modelM[1]))
+        MC.append(pcm.ComponentModel('muscle+nat',[modelM[0],modelM[1]]))
+        MC.append(pcm.ComponentModel('muscle+nat_2',[modelM[0],modelM[1]]))
         MC[3].common_param=np.array([False,True])
         theta0 = [np.zeros((15,)),np.zeros((15,)),np.zeros((16,)),np.zeros(22,)]
         T, theta = pcm.inference.fit_model_group(Y, MC, fit_scale=True)
-        self.assertAlmostEqual(T.likelihood[0][3]-T.likelihood[2][3],
-                                 -160.533922713701) 
+        self.assertAlmostEqual(T.likelihood['muscle'][3]
+                            -T.likelihood['muscle+nat'][3],
+                            -160.53412297528848,places=5) 
 
 if __name__ == '__main__':
-    unittest.main()
+    test = TestInference()
+    test.test_fit_model_group()
+    # unittest.main()

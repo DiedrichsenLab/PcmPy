@@ -8,8 +8,7 @@ from numpy import sum, diag, log, eye, exp, trace, einsum, sqrt
 import PcmPy as pcm
 
 def compute_iVr(Z, G, iS, X = None):
-    """
-    Fast inverse of V matrix using the matrix inversion lemma
+    """Fast inverse of V matrix using the matrix inversion lemma
 
     Parameters:
         Z (2d-np.array)
@@ -20,6 +19,7 @@ def compute_iVr(Z, G, iS, X = None):
             Inverse variance of noise matrix
         X (2d-np.array)
             Design matrix for random effects
+
     Returns:
         iV  (2d-np.array)
             inv(Z*G*Z' + S);
@@ -249,8 +249,7 @@ def likelihood_diagYYT_ZTZ(theta, Z, YY, num_var, comp, X=None, Noise=pcm.model.
         raise NameError('return_deriv needs to be 0, 1 or 2')
 
 def likelihood_diagYTY_ZZT(theta, Z, Y, comp, X=None, Noise=pcm.model.IndependentNoise(), return_deriv=0):
-    """
-    Negative Log-Likelihood of the data and derivative in respect to the parameters. This function is faster when N>>P.
+    """Negative Log-Likelihood of the data and derivative in respect to the parameters. This function is faster when N>>P.
 
     Parameters:
         theta (np.array)
@@ -441,9 +440,9 @@ class RidgeDiag:
         self.noise_model = noise_model
         self.n_param = max(components)+1+self.noise_model.n_param
         self.noise_idx = np.arange(max(components)+1,self.n_param)
+        self.fit_intercept = fit_intercept
         self.theta0_ = np.zeros((self.n_param,)) # Empty theta0
         self.theta_  = None
-        self.fit_intercept = fit_intercept
 
     def optimize_regularization(self, Z , Y, X = None, optim_param = {}, like_fcn = 'auto'):
         """

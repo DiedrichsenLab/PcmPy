@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Functions for data simulation a specific RSA-model
-    make_design: creates design and condition vectors for fMRI design
-    make_dataset: creates a data set based on an RDM model
+Functions for data simulation from PCM-models
 @author: jdiedrichsen
 """
 
-import PcmPy as pcm
 import numpy as np
 import scipy.stats as ss
 import scipy.linalg as sl
 from scipy.spatial.distance import squareform
-
+from PcmPy import matrix
+from PcmPy import dataset
 
 def make_design(n_cond, n_part):
     """
@@ -36,29 +34,41 @@ def make_design(n_cond, n_part):
 
 
 def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
-                signal=1, noise=1, signal_cov_channel=None, noise_cov_channel=None,noise_cov_trial=None, use_exact_signal=False, use_same_signal=False):
+                signal=1, noise=1, signal_cov_channel=None, noise_cov_channel=None,noise_cov_trial=None, use_exact_signal=False, use_same_signal=False,
+                part_vec = None, rng = None):
     """
     Simulates a fMRI-style data set
 
     Args:
-        model (pcm.Model):        the model from which to generate data
-        theta (numpy.ndarray):    vector of parameters (one dimensional)
-        cond_vec (numpy.ndarray): RSA-style model:
-                                      vector of experimental conditions
-                                  Encoding-style:
-                                      design matrix (n_obs x n_cond)
-        n_channel (int):          Number of channels (default = 30)
-        n_sim (int):              Number of simulation with the same signal
-                                      (default = 1)
-        signal (float):            Signal variance (multiplied by predicted G)
-        signal_cov_channel(numpy.ndarray): Covariance matrix of signal across channels
-        noise (float):             Noise variance
-        noise_cov_channel(numpy.ndarray): Covariance matrix of noise (default = identity)
-        noise_cov_trial(numpy.ndarray): Covariance matrix of noise across trials
-        use_exact_signal (bool):  Makes the signal so that G is exactly as
-                                  specified (default: False)
-        use_same_signal (bool):   Uses the same signal for all simulation
-                                  (default: False)
+        model (PcmPy.Model):
+            the model from which to generate data
+        theta (numpy.ndarray):
+            vector of parameters (one dimensional)
+        cond_vec (numpy.ndarray):
+            RSA-style model: vector of experimental conditions
+            Encoding-style: design matrix (n_obs x n_cond)
+        n_channel (int):
+            Number of channels (default = 30)
+        n_sim (int):
+            Number of simulation with the same signal (default = 1)
+        signal (float):
+            Signal variance (multiplied by predicted G)
+        signal_cov_channel(numpy.ndarray):
+            Covariance matrix of signal across channels
+        noise (float):
+            Noise variance
+        noise_cov_channel(numpy.ndarray):
+            Covariance matrix of noise (default = identity)
+        noise_cov_trial(numpy.ndarray):
+            Covariance matrix of noise across trials
+        use_exact_signal (bool):
+            Makes the signal so that G is exactly as specified (default: False)
+        use_same_signal (bool):
+            Uses the same signal for all simulation (default: False)
+        part_vec (np.array):
+            Optional partition that is added to the data set obs_descriptors
+        rng (np.random.default_rng):
+            Optional random number generator object to pass specific state
     Returns:
         data (list):              List of pyrsa.Dataset with obs_descriptors
     """
@@ -67,9 +77,13 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
     # Note that this step assumes that RDM uses squared Euclidean distances
     G, _ = model.predict(theta)
 
+    # If no random number generator is passed - make one
+    if rng is None:
+        rng = np.random.default_rng()
+
     # Make design matrix
     if (cond_vec.ndim == 1):
-        Zcond = pcm.matrix.indicator(cond_vec)
+        Zcond = matrix.indicator(cond_vec)
     elif (cond_vec.ndim == 2):
         Zcond = cond_vec
     else:
@@ -110,16 +124,16 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
     # Generate noise as a matrix normal, independent across partitions
     # If noise covariance structure is given, it is assumed that it's the same
     # across different partitions
-    obs_des = {"cond_vec": cond_vec}
+    obs_des = {"cond_vec": cond_vec,"part_vec": part_vec}
     des = {"signal": signal, "noise": noise,
            "model": model.name, "theta": theta}
     dataset_list = []
     for i in range(0, n_sim):
         # If necessary - make a new signal
         if (use_same_signal == False):
-            true_U = make_signal(G, n_channel, use_exact_signal, signal_chol_channel)
+            true_U = make_signal(G, n_channel, use_exact_signal, signal_chol_channel,rng=rng)
         # Make noise with normal distribution - allows later plugin of other dists
-        epsilon = np.random.uniform(0, 1, size=(n_obs, n_channel))
+        epsilon = rng.uniform(0, 1, size=(n_obs, n_channel))
         epsilon = ss.norm.ppf(epsilon) * np.sqrt(noise)
         # Now add spatial and temporal covariance structure as required
         if (noise_chol_channel is not None):
@@ -128,11 +142,11 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
             epsilon = noise_chol_trial @ epsilon
         # Assemble the data set
         data = Zcond @ true_U * np.sqrt(signal) + epsilon
-        dataset = pcm.Dataset(data, obs_descriptors=obs_des, descriptors=des)
-        dataset_list.append(dataset)
+        datas = dataset.Dataset(data, obs_descriptors=obs_des, descriptors=des)
+        dataset_list.append(datas)
     return dataset_list
 
-def make_signal(G, n_channel,make_exact=False, chol_channel=None):
+def make_signal(G, n_channel,make_exact=False, chol_channel=None,rng = None):
     """
     Generates signal exactly with a specified second-moment matrix (G)
 
@@ -143,14 +157,22 @@ def make_signal(G, n_channel,make_exact=False, chol_channel=None):
                              (default: False)
         chol_channel: Cholensky decomposition of the signal covariance matrix
                              (default: None - makes signal i.i.d.)
+        rng (np.random.default_rng):
+                            Optional random number generator object to pass specific state
+
     Returns:
         np.array (n_cond x n_channel): random signal
 
     """
     # Generate the true patterns with exactly correct second moment matrix
     n_cond = G.shape[0]
+
+    # If no random number generator is passed - make one
+    if rng is None:
+        rng = np.random.default_rng()
+
     # We use two-step procedure allow for different distributions later on
-    true_U = np.random.uniform(0, 1, size=(n_cond, n_channel))
+    true_U = rng.uniform(0, 1, size=(n_cond, n_channel))
     true_U = ss.norm.ppf(true_U)
     # Make orthonormal row vectors
     if (make_exact):

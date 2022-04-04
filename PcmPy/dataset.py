@@ -6,14 +6,14 @@ Definition of PCM Dataset class and subclasses
 """
 
 class Dataset:
-    """
-    Dataset class.
+    """Class for holding a single data set with observation descriptors.
+
     Defines members that every class needs to have, but does not
     implement any interesting behavior. Defines a light version of the RSA
     Dataset class (which could be used instead)
 
     Parameters:
-        measurements (numpy.ndarray):
+        measurements (np.ndarray):
             n_obs x n_channel 2d-array,
         descriptors (dict):
             descriptors (metadata)
@@ -21,8 +21,6 @@ class Dataset:
             observation descriptors (all are array-like with shape = (n_obs,...))
         channel_descriptors (dict):
             channel descriptors (all are array-like with shape = (n_channel,...))
-    Returns:
-        dataset object
     """
 
     def __init__(self, measurements, descriptors=None,

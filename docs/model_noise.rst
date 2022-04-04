@@ -1,0 +1,12 @@
+.. _model_noise:
+
+Noise Models
+============
+
+Other than RSA and Encoding models, PCM also requires a explict model of the noise.In general, noise is assumed to come from a multivariate normal distribution with covariance matrix :math:`\mathbf{S}\sigma^{2}`. In general, we also assume that the noise is independent across imaging runs (or partitions), making :math:`\mathbf{S}` a block-diagnonal matrix. But what do we assume about the within-run covariance?
+
+**Independent Noise**: If the data comes from regression estimates from a first-level model, and if the design of the experiment is balanced, then it is usually also permissible to make the assumption that the noise is independent within each imaging run :math:`\mathbf{S}=\mathbf{I}`. The raw regression coefficients from a single imaging run, however, are positively correlated with each other. So on solution is to remove the block-effect using a `fixed_effect = 'block'` during fitting.
+
+**Block Effect Plus Independent Noise**: We can also estimate the amount of within-block correlation from the data, rather than remove it. This is especially important for models where the contrast of condition against rest is important. The `BlockPlusIndepNoise` model has two parameters - one for the shared within block covariance, one for the variance for each item. Do not use this if you removed the block effect as a fixed effect.
+
+**Custom Model**: Assuming equal correlations of the activation estimates within a run is only a rough approximation to the real co-varince structure. A better estimate can be obtained by using an estimate derived from the design matrix and the estimated temporal autocorrelation of the raw signal. As pointed out recently (Cai et al.), the particular design can have substantial influence on the estimation of the second moment matrix. This is especially evident in cases where the design is such that the trial sequence is not random, but has an invariant structure (where trials of one condition are often to follow trials of another specific condition). The accuracy of our approximation hinges critically on the quality of our estimate of the temporal auto-covariance structure of the true noise. Note that it has been recently demonstrated that especially for high sampling rates, a simple autoregressive model of the noise is insufficient. In all optimisation routine, a specific noise covariance structure can be specified by passing the correct noise model to the fitting routine.

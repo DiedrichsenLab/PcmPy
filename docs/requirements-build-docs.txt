@@ -1,0 +1,10 @@
+numpy
+sphinx>=1.4
+sphinxcontrib-bibtex
+sphinx-copybutton
+pandas
+matplotlib
+ipykernel
+nbsphinx
+scipy
+seaborn

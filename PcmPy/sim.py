@@ -92,7 +92,7 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
 
     # If signal_cov_channel is given, precalculate the cholesky decomp
     if (signal_cov_channel is not None):
-        if (signal_cov_channel.shape is not (n_channel, n_channel)):
+        if (signal_cov_channel.shape != (n_channel, n_channel)):
             raise(NameError("Signal covariance for channels needs to be \
                              n_channel x n_channel array"))
         signal_chol_channel = np.linalg.cholesky(signal_cov_channel)
@@ -101,7 +101,7 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
 
     # If noise_cov_channel is given, precalculate the cholinsky decomp
     if (noise_cov_channel is not None):
-        if (noise_cov_channel.shape is not (n_channel, n_channel)):
+        if (noise_cov_channel.shape != (n_channel, n_channel)):
             raise(NameError("noise covariance for channels needs to be \
                              n_channel x n_channel array"))
         noise_chol_channel = np.linalg.cholesky(noise_cov_channel)
@@ -110,7 +110,7 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
 
     # If noise_cov_trial is given, precalculate the cholinsky decomp
     if (noise_cov_trial is not None):
-        if (noise_cov_trial.shape is not (n_channel, n_channel)):
+        if (noise_cov_trial.shape != (n_channel, n_channel)):
             raise(NameError("noise covariance for trials needs to be \
                              n_obs x n_obs array"))
         noise_chol_trial = np.linalg.cholesky(noise_cov_trial)

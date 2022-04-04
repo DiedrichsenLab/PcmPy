@@ -10,4 +10,5 @@ The life notebooks and underlying data can be found at https://github.com/Diedri
 
    demos/demo_fingers.ipynb
    demos/demo_correlation.ipynb
+   demos/demo_modelfamily.ipynb
 

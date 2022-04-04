@@ -537,3 +537,81 @@ class BlockPlusIndepNoise(NoiseModel):
             return self.BBT * np.exp(theta[0])
         elif n==1:
             return eye(self.N) * np.exp(theta[1])
+
+class ModelFamily:
+    """
+    ModelFamily class is basically a list (iterable) of models,
+    which is constructed from a combining a set of components in
+    every possible way. Every components can be either switched in or out.
+    You can always specify a list of 'base components', which are always present.
+    A Model family can be either constructed from a component model, or
+    a list of (usually fixed) models.
+    """
+    def __init__(self,components, basecomponents=None):
+        """
+        Parameters:
+            components (list)
+                A list of model components, which are used to create the model family
+            basecomponents (list)
+                This specifies the components that are present everywhere
+        """
+        self.names = []
+        self.Gc = []
+
+        if type(components) is ComponentModel:
+            self.num_comp = components.Gc.shape[0]
+            # to implement - make this a list of fixed models
+        elif type(components) is list:
+            self.num_comp = len(components)
+            for m in components:
+                if type(m) is not FixedModel:
+                    raise(NameError('Can only construct a model class from fixed models'))
+                self.Gc.append(m.Gc)
+                self.names.append(m.name)
+        else:
+            raise(NameError('Input needs to be either component model, or a list of fixed models'))
+
+        # Build all combination of 0,1,2... components
+        if self.num_comp > 12:
+            raise(NameError('More than 12 components is probably not recommended '))
+        self.num_models = 2 ** self.num_comp
+        self.combination = np.empty((self.num_models))
+
+        for i in range(self.num_comp):
+    A=nchoosek([1:numVarComp],i);
+    n = size(A,1);
+    X=zeros(n,numVarComp);
+    for j=1:n
+         X(j,A(j,:))=1;
+    end;
+    Comb=[Comb;X];
+end;
+
+% Now build the models with fixed components set in
+CompI= zeros(size(Comb,1),numComp);
+i=1;
+for i=1:size(Comb,1);
+    M{i}.type = MComp{1}.type;
+    vc=1;
+    M{i}.name =[];
+    M{i}.Gc   =[];
+    for j=1:numComp
+        if fixComp(j) % Component is fixed (always included)
+            M{i}=pcm_addModelComp(M{i},MComp{j});
+            CompI(i,j)=1;
+        else
+            if Comb(i,vc)
+                M{i}=pcm_addModelComp(M{i},MComp{j});
+                CompI(i,j)=1;
+            end;
+            vc=vc+1;
+        end;
+    end;
+    if isempty(M{i}.Gc)
+        M{i}.numGparams=0; % Empty Model
+        M{i}.name = 'null';
+        M{i}.Gc   = zeros(size(MComp{1}.Gc));
+    else
+        M{i}.numGparams=size(M{i}.Gc,3);
+    end;
+end;

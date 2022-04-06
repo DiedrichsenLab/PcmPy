@@ -67,6 +67,14 @@ def model_plot(likelihood,null_model=0,noise_ceiling=None,upper_ceiling=None):
     return ax
 
 def plot_tree(model_family,data,show_edges=True,show_labels=False):
+    # Transform from pandas to numpy
+    if type(data) in [pd.Series,pd.DataFrame]:
+        data = data.to_numpy()
+
+    # Make onedimensional and
+    data = data.reshape((-1,))
+    if data.shape[0]!=model_family.num_models:
+        raise(NameError('data must have as many entries as model combinations'))
 
     # Get the layout from the model family
     [x,y]   = model_family.get_layout()

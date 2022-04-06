@@ -37,11 +37,9 @@ def sim_two_by_three():
 
     fig=plt.figure(figsize=(18,3.5))
     plt.subplot(1,3,1)
-    pcm.vis.plot_tree(MF,mposterior.mean(axis=0),show_labels=True,show_edges=True)
-
+    pcm.vis.plot_tree(MF,mposterior,show_labels=True,show_edges=True)
     ax=plt.subplot(1,3,2)
     pcm.vis.plot_component(cposterior,type='posterior')
-
     ax=plt.subplot(1,3,3)
     pcm.vis.plot_component(c_bf,type='bf')
 

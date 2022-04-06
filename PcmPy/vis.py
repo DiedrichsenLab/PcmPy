@@ -116,8 +116,6 @@ def plot_tree(model_family,data,show_edges=True,show_labels=False):
             plt.text(x[i], y[i], model_family[i].name,
                 zorder = 40)
 
-
-
 def plot_component(data,type='posterior'):
     """Plots the result of a component analysis
     Args:

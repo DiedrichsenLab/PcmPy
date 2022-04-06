@@ -548,17 +548,25 @@ class ModelFamily:
     A Model family can be either constructed from a component model, or
     a list of (usually fixed) models.
     """
-    def __init__(self,components, basecomponents=None):
+    def __init__(self,components, basecomponents=None,comp_names=None):
         """
         Args:
             components (list)
                 A list of model components, which are used to create the model family
+                Can be a list of fixed models, a component model, or a num_comp x N xN array
             basecomponents (list)
                 This specifies the components that are present everywhere
         """
         if type(components) is ComponentModel:
             self.num_comp = components.Gc.shape[0]
-            # to implement - make this a list of fixed models
+            self.Gc = components.Gc
+            self.comp_names = comp_names
+        elif type(components) is np.ndarray:
+            if components.ndim != 3:
+                raise(NameError('ndarray input needs to have 3 dimensions (num_comp x N x N'))
+            self.num_comp = components.shape[0]
+            self.Gc = components
+            self.comp_names = comp_names
         elif type(components) is list:
             self.num_comp = len(components)
             for i,m in enumerate(components):
@@ -571,7 +579,12 @@ class ModelFamily:
                 self.Gc[i,:,:]=m.G
                 self.comp_names[i]=m.name
         else:
-            raise(NameError('Input needs to be either component model, or a list of fixed models'))
+            raise(NameError('Input needs to be Component model, ndarray, or a list of fixed models'))
+
+        # Check if component names are given:
+        if self.comp_names is None:
+            self.comp_names = [f'{d}' for d in np.arange(self.num_comp)+1]
+        self.comp_names = np.array(self.comp_names)
 
         # Build all combination of 0,1,2... components
         if self.num_comp > 12:

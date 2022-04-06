@@ -654,10 +654,13 @@ class ModelFamily:
             posterior (DataFrame or ndarray):
                 Model posterior - rows are data set, columns are models
         """
-        if type(likelihood) is pd.DataFrame:
+        if type(likelihood) in [pd.Series,pd.DataFrame]:
             LL = likelihood.to_numpy()
         else:
             LL = likelihood
+
+        if LL.ndim==1:
+            LL=LL.reshape((1,-1))
 
         if method=='AIC':
             crit = LL - self.num_comp_per_m

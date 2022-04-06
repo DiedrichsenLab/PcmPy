@@ -31,7 +31,7 @@ def sim_two_by_three():
     T,theta=pcm.fit_model_individ(D,MF,verbose=False)
 
     # pcm.vis.model_plot(T.likelihood-MF.num_comp_per_m)
-    mposterior = MF.model_posterior(T.likelihood,method='AIC',format='DataFrame')
+    mposterior = MF.model_posterior(T.likelihood.mean(axis=0),method='AIC',format='DataFrame')
     cposterior = MF.component_posterior(T.likelihood,method='AIC',format='DataFrame')
     c_bf = MF.component_bayesfactor(T.likelihood,method='AIC',format='DataFrame')
 

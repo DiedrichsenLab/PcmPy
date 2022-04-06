@@ -76,7 +76,7 @@ Finally, we can also obtain a Bayes factor as a measure of the evidence that the
 .. math::
    BF_{F=1}= \frac{\sum_{M:F=1}{p(data|M) }}{\sum_{M:F=0}{p(data|M)}}
 
-The following example shows how to construct and fit a model family, and how to then make inference on the individual model components.
+See the :ref:`Component inference and model families` example to see how to construct and fit a model family, and how to then make inference on the individual model components.
 
 
 

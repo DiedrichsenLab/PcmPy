@@ -2,6 +2,7 @@ import numpy as np
 from numpy import exp, eye, log, sqrt
 from numpy.linalg import solve, eigh, cholesky, pinv
 import PcmPy as pcm
+import pandas as pd
 
 class Model:
     """
@@ -549,25 +550,26 @@ class ModelFamily:
     """
     def __init__(self,components, basecomponents=None):
         """
-        Parameters:
+        Args:
             components (list)
                 A list of model components, which are used to create the model family
             basecomponents (list)
                 This specifies the components that are present everywhere
         """
-        self.names = []
-        self.Gc = []
-
         if type(components) is ComponentModel:
             self.num_comp = components.Gc.shape[0]
             # to implement - make this a list of fixed models
         elif type(components) is list:
             self.num_comp = len(components)
-            for m in components:
+            for i,m in enumerate(components):
                 if type(m) is not FixedModel:
                     raise(NameError('Can only construct a model class from fixed models'))
-                self.Gc.append(m.Gc)
-                self.names.append(m.name)
+                if i==0:
+                    self.Gc=np.empty((len(components),m.G.shape[0],m.G.shape[1]))
+                    self.comp_names=np.empty((len(components),),dtype=object)
+
+                self.Gc[i,:,:]=m.G
+                self.comp_names[i]=m.name
         else:
             raise(NameError('Input needs to be either component model, or a list of fixed models'))
 
@@ -575,43 +577,167 @@ class ModelFamily:
         if self.num_comp > 12:
             raise(NameError('More than 12 components is probably not recommended '))
         self.num_models = 2 ** self.num_comp
-        self.combination = np.empty((self.num_models))
+        self.combinations = np.empty((self.num_models,0),dtype=int)
+
+        ind = np.arange(self.num_models)
+        for i in range(self.num_comp):
+            self.combinations = np.c_[self.combinations,np.floor(ind/(2**i))%2]
+
+        # Order the combinations by the number of components that they contain
+        self.num_comp_per_m = self.combinations.sum(axis=1).astype(int)
+        ind = np.argsort(self.num_comp_per_m)
+        self.num_comp_per_m = self.num_comp_per_m[ind]
+        self.combinations = self.combinations[ind,:]
+
+        # Now build all model combinations as individual models
+        self.models = []
+        self.model_names = []
+        for m in range(self.num_models):
+            ind = self.combinations[m]>0
+            if ind.sum()==0:
+                name = 'base'
+                mod = FixedModel(name,np.zeros(self.Gc[0].shape))
+            else:
+                name = '+'.join(self.comp_names[ind])
+                mod = ComponentModel(name,self.Gc[ind,:,:])
+            self.model_names.append(name)
+            self.models.append(mod)
+
+    def __getitem__(self,key):
+        return self.models[key]
+
+    def __len__(self):
+        return self.num_models
+
+    def get_layout(self):
+        """generate 2d layout of the model tree
+        root model will be at (0,0)
+        """
+        x = np.zeros((self.num_models,))
+        y = np.zeros((self.num_models,))
+        max_comp=np.max(self.num_comp_per_m)
+        for i in range(max_comp+1):
+            ind = self.num_comp_per_m==i
+            y[ind]=i
+            x_coord = np.arange(np.sum(ind))
+            x[ind]= x_coord - x_coord.mean()
+        return x,y
+
+    def get_connectivity(self):
+        """ return a connectivty
+        matrix that determines whether
+        2 models only differ by a single component
+        """
+        connect = np.zeros((self.num_models,self.num_models),dtype=int)
+        connect_sgn = np.zeros((self.num_models,self.num_models),dtype=int)
+        for i in range(self.num_comp):
+            diff = self.combinations[:,i].reshape((-1,1)) - self.combinations[:,i].reshape((1,-1))
+            connect = connect + np.abs(diff).astype(int)
+            connect_sgn = connect_sgn + diff.astype(int)
+        return (connect==1)*connect_sgn
+
+    def model_posterior(self,likelihood,method='AIC',format='ndarray'):
+        """ Determine posterior of the model across model family
+
+        Args:
+            likelihood ([np.array or DataFrame]):
+                N x num_models log-likelihoods
+            method (string):
+                Method by which to correct for number of parameters(k)
+                'AIC' (default): LL-k
+                None: No correction - use if crossvalidated likelihood is used
+            format (string):
+                Return format for posterior
+                'ndarray': Simple N x num_models np.array
+                'DataFrame': pandas Data frame
+        Returns:
+            posterior (DataFrame or ndarray):
+                Model posterior - rows are data set, columns are models
+        """
+        if type(likelihood) is pd.DataFrame:
+            LL = likelihood.to_numpy()
+        else:
+            LL = likelihood
+
+        if method=='AIC':
+            crit = LL - self.num_comp_per_m
+        elif method is None:
+            crit = LL
+        else:
+            raise(NameError('Method needs be either BIC, AIC, or None'))
+
+        # Safe transform into probability
+        crit = crit - crit.max(axis=1).reshape(-1,1)
+        crit = np.exp(crit)
+        p = crit / crit.sum(axis=1).reshape(-1,1)
+
+        if format == 'DataFrame':
+            return pd.DataFrame(data=p,
+                        index=np.arange(p.shape[0]),
+                        columns = self.model_names)
+        else:
+            return p
+
+    def component_posterior(self,likelihood,method='AIC',format='ndarray'):
+        """ Determine the posterior of the component (absence / presence)
+
+        Args:
+            likelihood ([np.array or DataFrame]):
+                N x num_models log-likelihoods
+            method (string):
+                Method by which to correct for number of parameters(k)
+                'AIC' (default): LL-k
+                None: No correction - use if crossvalidated likelihood is used
+            format (string):
+                Return format for posterior
+                'ndarray': Simple N x num_models np.array
+                'DataFrame': pandas Data frame
+
+        Returns:
+            posterior (DataFrame):
+                Component posterior - rows are data set, columns are components
+        """
+        mposterior = self.model_posterior(likelihood,method)
+        cposterior = np.empty((mposterior.shape[0],self.num_comp))
 
         for i in range(self.num_comp):
-    A=nchoosek([1:numVarComp],i);
-    n = size(A,1);
-    X=zeros(n,numVarComp);
-    for j=1:n
-         X(j,A(j,:))=1;
-    end;
-    Comb=[Comb;X];
-end;
+            cposterior[:,i] = mposterior[:,self.combinations[:,i]==1].sum(axis=1)
 
-% Now build the models with fixed components set in
-CompI= zeros(size(Comb,1),numComp);
-i=1;
-for i=1:size(Comb,1);
-    M{i}.type = MComp{1}.type;
-    vc=1;
-    M{i}.name =[];
-    M{i}.Gc   =[];
-    for j=1:numComp
-        if fixComp(j) % Component is fixed (always included)
-            M{i}=pcm_addModelComp(M{i},MComp{j});
-            CompI(i,j)=1;
-        else
-            if Comb(i,vc)
-                M{i}=pcm_addModelComp(M{i},MComp{j});
-                CompI(i,j)=1;
-            end;
-            vc=vc+1;
-        end;
-    end;
-    if isempty(M{i}.Gc)
-        M{i}.numGparams=0; % Empty Model
-        M{i}.name = 'null';
-        M{i}.Gc   = zeros(size(MComp{1}.Gc));
-    else
-        M{i}.numGparams=size(M{i}.Gc,3);
-    end;
-end;
+        if format == 'DataFrame':
+            return pd.DataFrame(data=cposterior,
+                        index=np.arange(cposterior.shape[0]),
+                        columns = self.comp_names)
+
+        return cposterior
+
+    def component_bayesfactor(self,likelihood,method='AIC',format='ndarray'):
+        """ Returns a log-bayes factor for each component
+
+        Args:
+            likelihood ([np.array or DataFrame]):
+                N x num_models log-likelihoods
+            method (string):
+                Method by which to correct for number of parameters(k)
+                'AIC' (default): LL-k
+                None: No correction - use if crossvalidated likelihood is used
+            format (string):
+                Return format for posterior
+                'ndarray': Simple N x num_models np.array
+                'DataFrame': pandas Data frame
+
+        Returns:
+            posterior (DataFrame):
+                Component posterior - rows are data set, columns are components
+        """
+        mposterior = self.model_posterior(likelihood,method)
+        c_bf = np.empty((mposterior.shape[0],self.num_comp))
+
+        for i in range(self.num_comp):
+            c_bf[:,i] = np.log(mposterior[:,self.combinations[:,i]==1].sum(axis=1))-np.log(mposterior[:,self.combinations[:,i]==0].sum(axis=1))
+
+        if format == 'DataFrame':
+            return pd.DataFrame(data=c_bf,
+                        index=np.arange(c_bf.shape[0]),
+                        columns = self.comp_names)
+
+        return c_bf

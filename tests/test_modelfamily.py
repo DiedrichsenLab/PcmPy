@@ -5,36 +5,47 @@ Composite test for modelfamily class
 
 import PcmPy as pcm
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sb
 
-class TestModel(unittest.TestCase):
 
-    def test_model_feature(self):
-        """
-        Test that it can sum a list of integers
-        """
-        A = np.zeros((4,3,10))
-        M = pcm.FeatureModel("aModel",A)
-        self.assertEqual(M.n_param,4)
-        theta = np.array([0,1,2,3])
-        G, dG = M.predict(theta)
+def sim_two_by_three():
+    """Simulates a simple 2x3 factorial design
+    """
+    M = []
+    A = np.array([[1.0,0,0],[1,0,0],[0,1,0],[0,1,0],[0,0,1],[0,0,1]])
+    B = np.array([[1.0,0],[0,1],[1,0],[0,1],[1,0],[0,1]])
+    M.append(pcm.FixedModel('A',A@A.T))
+    M.append(pcm.FixedModel('B',B@B.T))
+    M.append(pcm.FixedModel('I',np.eye(6)))
+    MF=pcm.model.ModelFamily(M)
 
-    def test_model_component(self):
-        C=np.zeros((3,5,5))
-        C[0,0,0]=1
-        C[1,2,2]=1
-        C[2,4,4]=1
-        theta = np.array([0,2,5])
-        M = pcm.ComponentModel("bModel",C)
-        self.assertEqual(M.n_param,3)
-        G, dG = M.predict(theta)
-        self.assertEqual(G[2,2],np.exp(2))
+    # Now generate data from the full model with different values of theta
+    trueModel = MF[-1]
+    [cond_vec,part_vec]=pcm.sim.make_design(6,8)
+    D = pcm.sim.make_dataset(trueModel,np.array([-1.0,-1.0,-1.0]),
+                            signal=0.1,
+                            n_sim = 20,
+                            n_channel=20,part_vec=part_vec,
+                            cond_vec=cond_vec)
+    T,theta=pcm.fit_model_individ(D,MF,verbose=False)
 
-    def test_model_free(self):
-        A = np.eye(4)
-        M = pcm.FreeModel('ceil',4)
-        M.set_theta0(A)
-        [G,dG] = M.predict(M.theta0)
-        self.assertTrue(np.all((G-A)<1e-8))
+    # pcm.vis.model_plot(T.likelihood-MF.num_comp_per_m)
+    mposterior = MF.model_posterior(T.likelihood,method='AIC',format='DataFrame')
+    cposterior = MF.component_posterior(T.likelihood,method='AIC',format='DataFrame')
+    c_bf = MF.component_bayesfactor(T.likelihood,method='AIC',format='DataFrame')
+
+    fig=plt.figure(figsize=(18,3.5))
+    plt.subplot(1,3,1)
+    pcm.vis.plot_tree(MF,mposterior.mean(axis=0),show_labels=True,show_edges=True)
+
+    ax=plt.subplot(1,3,2)
+    pcm.vis.plot_component(cposterior,type='posterior')
+
+    ax=plt.subplot(1,3,3)
+    pcm.vis.plot_component(c_bf,type='bf')
+
+    pass
 
 if __name__ == '__main__':
-    unittest.main()
+    sim_two_by_three()

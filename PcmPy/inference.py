@@ -316,7 +316,7 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
         Data = [Data]
 
     # Get the number of models
-    if type(M) is list:
+    if type(M) in [list,pcm.model.ModelFamily]:
         n_model = len(M)
     else:
         n_model = 1

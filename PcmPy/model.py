@@ -252,7 +252,8 @@ class CorrelationModel(Model):
 
         # Add the derivative for the correlation parameter for flexible models
         if self.corr is None:
-            dC = C*4*exp(2*z)/(exp(2*z)+1)**2
+            with np.errstate(all='ignore'):
+                dC = C*4*exp(2*z)/(exp(2*z)+1)**2
             dG_dTheta[np.ix_([n],i1,i2)] = dC
             dG_dTheta[np.ix_([n],i2,i1)] = dC.T
         return (G,dG_dTheta)

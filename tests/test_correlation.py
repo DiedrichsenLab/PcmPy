@@ -17,7 +17,7 @@ from numpy import exp, sqrt
 
 
 
-def do_sim(corr=[0.7],signal=[0.5],n_sim=20):
+def do_sim(corr=[0.7],signal=[0.1],n_sim=20):
     # Make the design in this case it's 2 runs, 2 conditions!
     cond_vec,part_vec = pcm.sim.make_design(2,2)
     # Generate different models from 0 to 1
@@ -35,7 +35,12 @@ def do_sim(corr=[0.7],signal=[0.5],n_sim=20):
 
 
 if __name__ == '__main__':
+    # np.seterr(all='raise')
     T,theta,M = do_sim()
     r = M[-1].get_correlation(theta[-1])
     L = T.likelihood.iloc[:,:-1]
+    # np.seterr(over='ignore')
+    # a=np.array([1e50,1e100,3,4])
+    # b=np.exp(a)
     pass
+

@@ -88,7 +88,40 @@ def random_example(theta,N=10):
     pass
 
 
+def colinear_example(theta,N=20,signal=0.1,seed=1):
+    Q = theta.shape[0]
+    Gc = np.empty((Q,N,N))
+    rng = np.random.default_rng(seed)
+    
+    Z=rng.normal(0,1,(N,Q))
+    X = Z.copy() 
+    X[:,0]=0.55*Z[:,0]+0.45*Z[:,1]
+    X[:,1]=0.45*Z[:,0]+0.55*Z[:,1]
+    X[:,3]=0.3*Z[:,3]+0.7*Z[:,4]
+    X[:,4]=0.7*Z[:,3]+0.3*Z[:,4]
+
+    X = X/np.sqrt(np.sum(X**2,axis=0)) 
+    
+    for q in range(Q):
+        Gc[q,:,:]= X[:,q].reshape((N,1)) @ X[:,q].reshape((1,N))
+    M = pcm.ComponentModel('Full',Gc)
+    MF=pcm.model.ModelFamily(Gc)
+
+    
+    for q in range(Q):
+        plt.subplot(1,Q,q+1)
+        plt.imshow(M.Gc[q,:,:])
+
+    [cond_vec,part_vec]=pcm.sim.make_design(N,8)
+    D = pcm.sim.make_dataset(M,theta,
+                            signal=signal,
+                            n_sim = 20,
+                            n_channel=20,part_vec=part_vec,
+                            cond_vec=cond_vec)
+    component_inference(D,MF)
+    pass
+
 
 if __name__ == '__main__':
     # sim_two_by_three(np.array([-1.0,-1.0,-1.0]))
-    random_example(np.array([-1,-2,-np.inf,0,-np.inf]))
+    colinear_example(np.array([0,0,0,0,0]),signal=1)

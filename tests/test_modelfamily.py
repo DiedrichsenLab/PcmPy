@@ -65,6 +65,7 @@ def random_design(N=10,Q=5,num_feat=2,seed=1):
     rng = np.random.default_rng(seed)
     for q in range(Q):
         X= rng.normal(0,1,(N,num_feat))
+        X = X/np.sqrt(np.sum(X**2,axis=0)) 
         Gc[q,:,:]= X @ X.T
     M = pcm.ComponentModel('A+B+I',Gc)
     MF=pcm.model.ModelFamily(Gc)

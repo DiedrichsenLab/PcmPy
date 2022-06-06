@@ -95,8 +95,8 @@ def colinear_example(theta,N=20,signal=0.1,seed=1):
     
     Z=rng.normal(0,1,(N,Q))
     X = Z.copy() 
-    X[:,0]=0.55*Z[:,0]+0.45*Z[:,1]
-    X[:,1]=0.45*Z[:,0]+0.55*Z[:,1]
+    X[:,0]=0.55*Z[:,0]+0.5*Z[:,1]
+    X[:,1]=0.5*Z[:,0]+0.55*Z[:,1]
     X[:,3]=0.3*Z[:,3]+0.7*Z[:,4]
     X[:,4]=0.7*Z[:,3]+0.3*Z[:,4]
 
@@ -124,4 +124,4 @@ def colinear_example(theta,N=20,signal=0.1,seed=1):
 
 if __name__ == '__main__':
     # sim_two_by_three(np.array([-1.0,-1.0,-1.0]))
-    colinear_example(np.array([0,0,0,0,0]),signal=1)
+    colinear_example(np.array([0,-np.inf,-np.inf,-np.inf,-np.inf]),signal=1)

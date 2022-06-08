@@ -137,7 +137,7 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
         epsilon = ss.norm.ppf(epsilon) * np.sqrt(noise)
         # Now add spatial and temporal covariance structure as required
         if (noise_chol_channel is not None):
-            epsilon = epsilon @ noise_chol_channel
+            epsilon = epsilon @ noise_chol_channel.T
         if (noise_chol_trial is not None):
             epsilon = noise_chol_trial @ epsilon
         # Assemble the data set
@@ -181,7 +181,7 @@ def make_signal(G, n_channel,make_exact=False, chol_channel=None,rng = None):
         true_U = np.linalg.solve(L, true_U) * np.sqrt(n_channel)
     # Impose spatial covariance matrix
     if (chol_channel is not None):
-        true_U = true_U @ chol_channel
+        true_U = true_U @ chol_channel.T
     # Now produce data with the known second-moment matrix
     # Use positive eigenvectors only
     # (cholesky does not work with rank-deficient matrices)

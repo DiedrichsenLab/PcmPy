@@ -681,6 +681,8 @@ def set_up_fit(Data, fixed_effect = 'block', noise_cov = None):
 
     # Get data
     Y = Data.measurements
+    if np.iscomplexobj(Y):
+        raise(NameError('Data array contains complex numbers: PCM only works for real data.'))
     N, n_channel = Y.shape
     YY = Y @ Y.T
 

@@ -102,3 +102,24 @@ def make_pd(G,thresh = 1e-10):
     Glam[Glam < thresh] = thresh # rectify small eigenvalues
     G_pd = V @ np.diag(Glam) @ V.T
     return G_pd
+
+def classical_mds(G,contrast=None,align=None):
+    """Calculates a low-dimensional projection of a G-matrix 
+    That preserves the relationship of different conditions
+    Equivalent to classical MDS.
+    If contrast is given, the method becomes equivalent to dPCA, 
+    as it finds the representation that maximizes the variance acording to this contrast. 
+    Developement: If `align` is given, it performs Procrustes alignment of the result to a given V within the found dimension 
+
+    Args:
+        G (ndarray): KxK second moment matrix 
+        contrast (ndarray): Contrast matrix to optimize for. Defaults to None.
+        align (ndarry): A different loading matrix to which to align
+    Returns:
+        W (ndarray): Loading of the K different conditions on main axis
+    """
+    G = (G + G.T)/2
+    Glam, V = eigh(G)
+    Glam = np.flip(Glam,axis=0)
+    V = np.flip(V,axis=1)
+    pass

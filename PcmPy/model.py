@@ -582,6 +582,27 @@ class ModelFamily:
         else:
             raise(NameError('Input needs to be Component model, ndarray, or a list of fixed models'))
 
+        # concatenate basecomponents to the end of the self.Gc
+        if basecomponents is not None:
+            if type(basecomponents) is ComponentModel:
+                self.num_basecomp = basecomponents.Gc.shape[0]
+                self.Gc = np.r_[self.Gc,basecomponents.Gc]
+            elif type(basecomponents) is np.ndarray:
+                if basecomponents.ndim != 3:
+                    raise(NameError('ndarray input needs to have 3 dimensions (num_basecomp x N x N'))
+                self.num_basecomp = basecomponents.shape[0]
+                self.Gc = np.r_[self.Gc,basecomponents]
+            elif type(basecomponents) is list:
+                self.num_basecomp = len(basecomponents)
+                for i,m in enumerate(basecomponents):
+                    if type(m) is not FixedModel:
+                        raise(NameError('Can only construct a model class from fixed models'))
+                    self.Gc = np.r_[self.Gc,m.G]
+            else:
+                raise(NameError('Input needs to be Component model, ndarray, or a list of fixed models'))
+        else:
+            self.num_basecomp = 0
+
         # Check if component names are given:
         if self.comp_names is None:
             self.comp_names = [f'{d}' for d in np.arange(self.num_comp)+1]
@@ -600,19 +621,22 @@ class ModelFamily:
         # Order the combinations by the number of components that they contain
         self.num_comp_per_m = self.combinations.sum(axis=1).astype(int)
         ind = np.argsort(self.num_comp_per_m)
-        self.num_comp_per_m = self.num_comp_per_m[ind]
+        self.num_comp_per_m = self.num_comp_per_m[ind]+self.num_basecomp
         self.combinations = self.combinations[ind,:]
 
         # Now build all model combinations as individual models
         self.models = []
         self.model_names = []
         for m in range(self.num_models):
-            ind = self.combinations[m]>0
-            if ind.sum()==0:
+            ind = np.r_[self.combinations[m],np.ones(self.num_basecomp)]>0
+            if ind.sum()==self.num_basecomp:
                 name = 'base'
-                mod = FixedModel(name,np.zeros(self.Gc[0].shape))
+                if self.num_basecomp==0:
+                    mod = FixedModel(name,np.zeros(self.Gc[0].shape))
+                else:
+                    mod = ComponentModel(name,self.Gc[ind,:,:])
             else:
-                name = '+'.join(self.comp_names[ind])
+                name = '+'.join(self.comp_names[self.combinations[m]>0])
                 mod = ComponentModel(name,self.Gc[ind,:,:])
             self.model_names.append(name)
             self.models.append(mod)

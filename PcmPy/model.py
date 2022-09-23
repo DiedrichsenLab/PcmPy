@@ -549,7 +549,7 @@ class ModelFamily:
     A Model family can be either constructed from a component model, or
     a list of (usually fixed) models.
     """
-    def __init__(self,components, basecomponents=None,comp_names=None):
+    def __init__(self,components,basecomponents=None,comp_names=None):
         """
         Args:
             components (list)

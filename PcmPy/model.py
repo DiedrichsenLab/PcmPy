@@ -545,7 +545,7 @@ class ModelFamily:
     ModelFamily class is basically a list (iterable) of models,
     which is constructed from a combining a set of components in
     every possible way. Every components can be either switched in or out.
-    You can always specify a list of 'base components', which are always present.
+    You can specify a list of 'base components', which are always present.
     A Model family can be either constructed from a component model, or
     a list of (usually fixed) models.
     """

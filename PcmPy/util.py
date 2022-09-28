@@ -7,8 +7,10 @@ Collection of different utility functions
 """
 
 import numpy as np
+from numpy import sum,mean,trace,sqrt, zeros, ones
 from PcmPy.matrix import indicator
 from scipy.linalg import solve, pinv
+from scipy.spatial import procrustes
 from numpy.linalg import eigh
 
 def est_G_crossval(Y, Z, part_vec, X=None, S=None):
@@ -102,3 +104,41 @@ def make_pd(G,thresh = 1e-10):
     Glam[Glam < thresh] = thresh # rectify small eigenvalues
     G_pd = V @ np.diag(Glam) @ V.T
     return G_pd
+
+def classical_mds(G,contrast=None,align=None,thres=0):
+    """Calculates a low-dimensional projection of a G-matrix 
+    That preserves the relationship of different conditions
+    Equivalent to classical MDS.
+    If contrast is given, the method becomes equivalent to dPCA, 
+    as it finds the representation that maximizes the variance acording to this contrast. 
+    Developement: If `align` is given, it performs Procrustes alignment of the result to a given V within the found dimension 
+
+    Args:
+        G (ndarray): KxK second moment matrix 
+        contrast (ndarray): Contrast matrix to optimize for. Defaults to None.
+        align (ndarry): A different loading matrix to which to align 
+        thres (float): Cut off eigenvalues under a certain value
+    Returns:
+        W (ndarray): Loading of the K different conditions on main axis
+        Glam (ndarray): Variance explained by each axis
+    """
+    G = (G + G.T)/2
+    Glam, V = eigh(G)
+    Glam = np.flip(Glam,axis=0)
+    V = np.flip(V,axis=1)
+    
+    # Kill eigenvalues smaller than threshold 
+    Glam[Glam<thres]=0
+    W = V * np.sqrt(Glam)
+
+    # When aligning - use the center and scale of the target 
+    # As the standard for both 
+    if align is not None:
+        align_m = align.mean(axis=0)
+        align_std = align - align_m
+        align_s = trace(align_std.T@align_std)
+        align_std = align_std / sqrt(align_s)
+        A,W1,disp = procrustes(align_std,W)
+        W = W1 * sqrt(align_s) + align_m
+        Glam = np.diag(W.T @ W)
+    return W,Glam

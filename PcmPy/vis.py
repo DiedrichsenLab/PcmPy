@@ -66,10 +66,21 @@ def model_plot(likelihood,null_model=0,noise_ceiling=None,upper_ceiling=None):
     ax.set_ylabel('Log Bayes Factor')
     return ax
 
-def plot_tree(model_family,data,show_edges=True,show_labels=False):
+def plot_tree(model_family,data,
+            show_edges=True,
+            show_labels=False,
+            edge_color='diff_comp',
+            edge_width=1,
+            comp_colormap='tab20'):
+
     # Transform from pandas to numpy
     if type(data) in [pd.Series,pd.DataFrame]:
         data = data.to_numpy()
+
+    # Set colormap for component-based coloring
+    if isinstance(comp_colormap,str):
+        comp_colormap = plt.get_cmap(comp_colormap) 
+        comp_colormap = comp_colormap(np.arange(model_family.num_comp))
 
     # Make onedimensional and
     data = data.reshape((-1,))
@@ -89,12 +100,19 @@ def plot_tree(model_family,data,show_edges=True,show_labels=False):
 
     # Draw connections, if desired
     if show_edges:
-        connect = model_family.get_connectivity()
-        [fr,to]=np.where(connect==1)
+        connect = model_family.get_connectivity(by_comp=True)
+        any_connect = np.sum(connect,axis=0)
+        [comp,fr,to]=np.where(connect==1)
         for i in range(fr.shape[0]):
-            l = mlines.Line2D([x[fr[i]], x[to[i]]],
+            if edge_color == "uniform":
+                l = mlines.Line2D([x[fr[i]], x[to[i]]],
                               [y[fr[i]], y[to[i]]],
-                              color=[0,0,0,0.3],
+                              color=(0,0,0,0.3),
+                              zorder=1)
+            elif edge_color == 'diff_comp':
+                l = mlines.Line2D([x[fr[i]], x[to[i]]],
+                              [y[fr[i]], y[to[i]]],
+                              color=comp_colormap[comp[i]],
                               zorder=1)
             ax.add_line(l)
 
@@ -132,4 +150,6 @@ def plot_component(data,type='posterior'):
     elif(type=='bf'):
         ax.set_ylabel('Bayes Factor')
         plt.axhline(0,color='k',ls='--')
+    elif(type=='varestimate'):
+        ax.set_ylabel('Variance Estimate')
     ax.set_xlabel('Component')

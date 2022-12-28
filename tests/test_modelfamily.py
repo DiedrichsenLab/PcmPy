@@ -34,14 +34,17 @@ def component_inference(D,MF):
     mposterior = MF.model_posterior(T.likelihood.mean(axis=0),method='AIC',format='DataFrame')
     cposterior = MF.component_posterior(T.likelihood,method='AIC',format='DataFrame')
     c_bf = MF.component_bayesfactor(T.likelihood,method='AIC',format='DataFrame')
+    var_est = MF.component_varestimate(T.likelihood,theta,method='AIC',format='DataFrame')
 
-    fig=plt.figure(figsize=(18,3.5))
-    plt.subplot(1,3,1)
+    fig=plt.figure(figsize=(10,10))
+    plt.subplot(2,2,1)
     pcm.vis.plot_tree(MF,mposterior,show_labels=False,show_edges=True)
-    ax=plt.subplot(1,3,2)
+    ax=plt.subplot(2,2,2)
     pcm.vis.plot_component(cposterior,type='posterior')
-    ax=plt.subplot(1,3,3)
+    ax=plt.subplot(2,2,3)
     pcm.vis.plot_component(c_bf,type='bf')
+    ax=plt.subplot(2,2,4)
+    pcm.vis.plot_component(var_est,type='varestimate')
 
 
 def sim_two_by_three(theta):

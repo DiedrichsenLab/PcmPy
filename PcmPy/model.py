@@ -614,13 +614,14 @@ class ModelFamily:
         self.num_models = 2 ** self.num_comp
         self.combinations = np.empty((self.num_models,0),dtype=int)
 
-        ind = np.arange(self.num_models)
+        mn = np.arange(self.num_models)
         for i in range(self.num_comp):
-            self.combinations = np.c_[self.combinations,np.floor(ind/(2**i))%2]
+            self.combinations = np.c_[self.combinations,np.floor(mn/(2**i))%2]
 
         # Order the combinations by the number of components that they contain
         self.num_comp_per_m = self.combinations.sum(axis=1).astype(int)
-        ind = np.argsort(self.num_comp_per_m)
+        ind = np.argsort(self.num_comp_per_m+mn/self.num_models)
+
         self.num_comp_per_m = self.num_comp_per_m[ind]+self.num_basecomp
         self.combinations = self.combinations[ind,:]
 
@@ -650,6 +651,13 @@ class ModelFamily:
     def get_layout(self):
         """generate 2d layout of the model tree
         root model will be at (0,0)
+        Args:
+            None
+        Returns: 
+            x (ndarray):
+                x-coordinate of model 
+            y (ndarray):
+                y-coordinate of model
         """
         x = np.zeros((self.num_models,))
         y = np.zeros((self.num_models,))
@@ -661,18 +669,26 @@ class ModelFamily:
             x[ind]= x_coord - x_coord.mean()
         return x,y
 
-    def get_connectivity(self):
+    def get_connectivity(self,by_comp=False):
         """ return a connectivty
         matrix that determines whether
         2 models only differ by a single component
+        Args:
+            by_comp (bool):
+                If true, returns (num_model x num_model x num_comp) array
+        Returns:
+            connect (ndarray):
+                0: not connected 1: component added -1: component subtracted
         """
-        connect = np.zeros((self.num_models,self.num_models),dtype=int)
-        connect_sgn = np.zeros((self.num_models,self.num_models),dtype=int)
+        diff = np.zeros((self.num_comp,self.num_models,self.num_models),dtype=int)
         for i in range(self.num_comp):
-            diff = self.combinations[:,i].reshape((-1,1)) - self.combinations[:,i].reshape((1,-1))
-            connect = connect + np.abs(diff).astype(int)
-            connect_sgn = connect_sgn + diff.astype(int)
-        return (connect==1)*connect_sgn
+            diff[i] = self.combinations[:,i].reshape((-1,1)) - self.combinations[:,i].reshape((1,-1))
+        connect = np.sum(np.abs(diff),axis=0)
+        diff[:,connect!=1]=0
+        if by_comp:
+            return diff
+        else: 
+            return np.sum(diff,axis=0)
 
     def model_posterior(self,likelihood,method='AIC',format='ndarray'):
         """ Determine posterior of the model across model family
@@ -780,5 +796,53 @@ class ModelFamily:
             return pd.DataFrame(data=c_bf,
                         index=np.arange(c_bf.shape[0]),
                         columns = self.comp_names)
-
         return c_bf
+
+    def component_exptheta(self,theta):
+        if len(theta)!=self.num_models:
+            raise(NameError(f'Length of theta: {len(theta)}, Number of models: {self.num_models} must match'))
+        num_sub = theta[0].shape[1]
+        exptheta = np.zeros((num_sub,self.num_models,self.num_comp))
+        for m in range(self.num_models):
+            indx = np.nonzero(self.combinations[m])[0]
+            for j,ind in enumerate(indx):
+                exptheta[:,m,ind]=np.exp(theta[m][j,:])
+        return exptheta
+
+    def component_varestimate(self,
+            likelihood,
+            theta,
+            method='AIC',
+            format='ndarray'):
+        """ Returns a log-bayes factor for each component
+
+        Args:
+            likelihood (np.array or DataFrame):
+                N x num_models log-likelihoods
+            theta (np.array): 
+                N x num_models of fitted parameters  
+            method (string):
+                Method by which to correct for number of parameters(k)
+                'AIC' (default): LL-k
+                None: No correction - use if crossvalidated likelihood is used
+            format (string):
+                Return format for posterior
+                'ndarray': Simple N x num_models np.array
+                'DataFrame': pandas Data frame
+
+        Returns:
+            posterior (DataFrame):
+                Component posterior - rows are data set, columns are components
+        """
+        mposterior = self.model_posterior(likelihood,method)
+        exptheta = self.component_exptheta(theta)
+    
+        var_est = np.sum(exptheta * np.expand_dims(mposterior,2),axis=1)
+        var_comp = np.trace(self.Gc,axis1=1,axis2=2)
+        var_est = var_est * var_comp
+
+        if format == 'DataFrame':
+            return pd.DataFrame(data=var_est,
+                        index=np.arange(var_est.shape[0]),
+                        columns = self.comp_names)
+        return var_est

@@ -653,9 +653,9 @@ class ModelFamily:
         root model will be at (0,0)
         Args:
             None
-        Returns: 
+        Returns:
             x (ndarray):
-                x-coordinate of model 
+                x-coordinate of model
             y (ndarray):
                 y-coordinate of model
         """
@@ -687,7 +687,7 @@ class ModelFamily:
         diff[:,connect!=1]=0
         if by_comp:
             return diff
-        else: 
+        else:
             return np.sum(diff,axis=0)
 
     def model_posterior(self,likelihood,method='AIC',format='ndarray'):
@@ -802,11 +802,11 @@ class ModelFamily:
         if len(theta)!=self.num_models:
             raise(NameError(f'Length of theta: {len(theta)}, Number of models: {self.num_models} must match'))
         num_sub = theta[0].shape[1]
-        exptheta = np.zeros((num_sub,self.num_models,self.num_comp))
+        exptheta = np.zeros((self.num_comp,num_sub,self.num_models))
         for m in range(self.num_models):
             indx = np.nonzero(self.combinations[m])[0]
             for j,ind in enumerate(indx):
-                exptheta[:,m,ind]=np.exp(theta[m][j,:])
+                exptheta[ind,:,m]=np.exp(theta[m][j,:])
         return exptheta
 
     def component_varestimate(self,
@@ -819,8 +819,8 @@ class ModelFamily:
         Args:
             likelihood (np.array or DataFrame):
                 N x num_models log-likelihoods
-            theta (np.array): 
-                N x num_models of fitted parameters  
+            theta (np.array):
+                N x num_models of fitted parameters
             method (string):
                 Method by which to correct for number of parameters(k)
                 'AIC' (default): LL-k
@@ -836,8 +836,8 @@ class ModelFamily:
         """
         mposterior = self.model_posterior(likelihood,method)
         exptheta = self.component_exptheta(theta)
-    
-        var_est = np.sum(exptheta * np.expand_dims(mposterior,2),axis=1)
+
+        var_est = np.sum(exptheta * mposterior,axis=2).T
         var_comp = np.trace(self.Gc,axis1=1,axis2=2)
         var_est = var_est * var_comp
 

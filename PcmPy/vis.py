@@ -71,7 +71,8 @@ def plot_tree(model_family,data,
             show_labels=False,
             edge_color='diff_comp',
             edge_width=1,
-            comp_colormap='tab20'):
+            comp_colormap='tab20',
+            model_size = 0.3):
 
     # Transform from pandas to numpy
     if type(data) in [pd.Series,pd.DataFrame]:
@@ -79,7 +80,7 @@ def plot_tree(model_family,data,
 
     # Set colormap for component-based coloring
     if isinstance(comp_colormap,str):
-        comp_colormap = plt.get_cmap(comp_colormap) 
+        comp_colormap = plt.get_cmap(comp_colormap)
         comp_colormap = comp_colormap(np.arange(model_family.num_comp))
 
     # Make onedimensional and
@@ -122,7 +123,7 @@ def plot_tree(model_family,data,
 
     # Draw model circles
     for i in range(x.shape[0]):
-        circle = plt.Circle((x[i], y[i]), 0.3,
+        circle = plt.Circle((x[i], y[i]), model_size,
                 facecolor=cmap(norm(data[i])),
                 edgecolor=(0,0,0,0.3),
                 zorder = 30)

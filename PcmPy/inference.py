@@ -430,7 +430,7 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
         Data = [Data]
 
     # Get the number of models
-    if type(M) is list:
+    if type(M) in [list,pcm.model.ModelFamily]:
         n_model = len(M)
     else:
         n_model = 1
@@ -556,7 +556,7 @@ def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
         Data = [Data]
 
     # Get the number of models
-    if type(M) is list:
+    if type(M) in [list,pcm.model.ModelFamily]:
         n_model = len(M)
     else:
         n_model = 1
@@ -764,7 +764,7 @@ def get_scale0(G,G_hat):
     """
     g = G.reshape((-1,))
     g_hat = G_hat.reshape((-1,))
-    scaling = (g @ g_hat) / (g @ g)
+    scaling = (g @ g_hat) / (g @ g + 10e-5)
     if (scaling < 10e-5):
         scaling = 10e-5
     return log(np.array([scaling]))

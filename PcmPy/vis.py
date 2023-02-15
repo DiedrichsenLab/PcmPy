@@ -154,3 +154,17 @@ def plot_component(data,type='posterior'):
     elif(type=='varestimate'):
         ax.set_ylabel('Variance Estimate')
     ax.set_xlabel('Component')
+
+
+def plot_Gs(G,grid = None, labels=None):
+    numG,n_cond,n_cond = G.shape
+    if grid is None:
+        a = int(np.ceil(np.sqrt(numG)))
+        b = int(np.ceil(numG/a))
+        grid = (a,b)
+    for i in range(numG):
+        plt.subplot(grid[0],grid[1],i+1)
+        plt.imshow(G[i])
+        plt.xticks([])
+        plt.yticks([])
+    

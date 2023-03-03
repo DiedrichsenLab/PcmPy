@@ -133,8 +133,7 @@ class ComponentModel(Model):
 class CorrelationModel(Model):
     """
     Correlation model class for a fixed or flexible correlation model
-    it models the correlation between different items  across 2 experimental conditions.
-    In this paramaterization:
+    it models the correlation between different items  across 2 experimental conditions. Using this paramaterization:
     var(x) = exp(theta_x)
 
     var(y) = exp(theta_y)

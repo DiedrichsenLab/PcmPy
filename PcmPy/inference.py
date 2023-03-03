@@ -160,8 +160,9 @@ def likelihood_group(theta, M, YY, Z, X=None,
 
     Parameters:
         theta (np.array):
-            Vector of (log-)model parameters consisting of common model parameters (M.n_param or sum of M.common_param),
-            participant-specific parameters (interated by subject), unique model parameters (not in common_param),
+            Vector of (log-)model parameters consisting of common model parameters (M.n_param or sum of M.common_param) +
+            participant-specific parameters (interated by subject): 
+            individ model param (not in common_param),
             scale parameter,noise parameters
         M (pcm.Model):
             Model object
@@ -199,53 +200,26 @@ def likelihood_group(theta, M, YY, Z, X=None,
             Second derivative of negloglike in respect to the parameters
 
     """
-
     n_subj = len(YY)
     n_param = theta.shape[0]
-
-    # Determine the common parameters to the group
-    if hasattr(M,'common_param'):
-        common_param = M.common_param
-    else:
-        common_param = np.ones((M.n_param,),dtype=np.bool_)
-
-    # Get the number of parameters
-    n_common = np.sum(common_param) # Number of common params
-    n_modsu = M.n_param - n_common # Number of subject-specific model params
-    n_scale = int(fit_scale) # Number of scale parameters
-    n_noise = Noise[0].n_param # Number of noise params
-    n_per_subj = n_modsu + n_scale + n_noise # Number of parameters per subj
-
-    # Generate the indices into the theta vector
-    indx_common = np.array(range(n_common))
-    indx_subj = np.arange(n_common, n_common + n_subj * n_per_subj, n_per_subj, dtype = int)
-    indx_subj = indx_subj.reshape((1,-1))
-    indx_modsu = np.zeros((n_modsu,1),dtype = int) + indx_subj
-    indx_scale = np.zeros((n_scale,1),dtype = int) + n_modsu + indx_subj
-    indx_noise = np.array(range(n_noise),dtype = int).T + n_scale + n_modsu + indx_subj
-
     # preallocate the arrays
     nl = np.zeros((n_subj,))
     dFdh = np.zeros((n_subj,n_param))
     dFdhh = np.zeros((n_subj,n_param,n_param))
 
+    # Get the mapping to individual subjects
+    ths,indx=group_to_individ_param(theta,M,n_subj)
+
     # Loop over subjects and get individual likelihoods
     for s in range(n_subj):
-        # Pick out the correct places for the group parameter vector for each subj
-        indx_model = np.zeros((M.n_param,), dtype=int)
-        indx_model[common_param]=indx_common
-        indx_model[np.logical_not(common_param)]=indx_modsu[:,s]
-        indx = np.concatenate([indx_model, indx_scale[:,s], indx_noise[:,s]])
-        ths = theta[indx]
         # Get individual likelihood
-        res = likelihood_individ(ths, M, YY[s], Z[s], X[s],
+        res = likelihood_individ(ths[s], M, YY[s], Z[s], X[s],
                        Noise[s], n_channel[s], fit_scale = fit_scale, scale_prior = scale_prior, return_deriv = return_deriv)
-        iS = indx_scale[0,s]
         nl[s] = res[0]
         if return_deriv>0:
-            dFdh[s, indx] = res[1]
+            dFdh[s, indx[s,:]] = res[1]
         if return_deriv==2:
-            ixgrid = np.ix_([s],indx,indx)
+            ixgrid = np.ix_([s],indx[s,:],indx[s,:])
             dFdhh[ixgrid] = res[2]
 
     # Integrate over subjects
@@ -262,7 +236,7 @@ def likelihood_group(theta, M, YY, Z, X=None,
 def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
                     scale_prior = 1e3, noise_cov=None, algorithm=None,
                     optim_param={}, theta0=None, verbose = True):
-    """Fits Models to a data set inidividually.
+    """Fits Models to a data set individually.
 
     The model parameters are all individually fit.
 
@@ -416,7 +390,8 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
             time:               Elapsed time in sec
 
         theta (list of np.arrays):
-            List of estimated model parameters, each a
+            List of estimated model parameters each one is a vector with 
+            #num_commonparams + #num_singleparams x #numSubj elements
 
         G_pred (list of np.arrays):
             List of estimated G-matrices under the model
@@ -480,6 +455,8 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
                 th0 = np.concatenate((th0,scale0))
             indx_noise[s]=th0.shape[0]
             th0 = np.concatenate((th0,Noise[s].theta0))
+        
+        # Use externally provided theta, if provided
         if (theta0 is not None) and (len(theta0) >= m-1):
             th0 = theta0[m]
 
@@ -499,6 +476,38 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
         if (fit_scale):
             T['scale',m_names[m]] = exp(theta[m][indx_scale])
     return [T,theta]
+
+def group_to_individ_param(theta,M,n_subj):
+    """ Takes a vector of group parameters and rearranges them 
+    To make it conform to theta you would get back from a individual fit 
+    
+    Args:
+        theta (nd.array): Vector of group parameters 
+        M (pcm.Model): PCM model 
+        n_subj (int): Number of subjects 
+    Returns:
+        theta_indiv (ndarray): n_subj x n_params Matrix of group parameters 
+    """
+    if hasattr(M,'common_param'):
+        common = np.array(M.common_param)
+    else:
+        common = np.ones((M.n_param,), dtype=np.bool_)
+    
+    n_gparam = len(theta) 
+    n_common = common.sum()
+    n_indiv = np.floor_divide(n_gparam-n_common,n_subj)
+    if np.remainder(n_gparam-n_common,n_subj)>0:
+        raise(NameError(f'Group parameters vector is not the right size.'))
+    pindx = (np.arange(n_subj*n_indiv)+n_common).reshape(n_subj,n_indiv)
+    indx =  np.zeros((n_subj,n_common + n_indiv),int)
+    for p,i in enumerate(np.where(common)[0]):
+        indx[:,i]=p
+    for p,i in enumerate(np.where(np.logical_not(common))[0]):
+        indx[:,i]=pindx[:,p]
+    # Signal and noise parameters 
+    indx[:,M.n_param:]=pindx[:,(n_indiv-n_common):]
+    theta_indiv= theta[indx]
+    return theta_indiv,indx
 
 def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
                     scale_prior = 1e3, noise_cov=None, algorithm=None,

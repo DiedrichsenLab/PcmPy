@@ -72,6 +72,11 @@ class FeatureModel(Model):
             dA = self.Ac[i,:,:] @ A.transpose()
             dG_dTheta[i,:,:] =  dA + dA.transpose()
         return (G,dG_dTheta)
+    
+
+    def set_theta0(self,G_hat):
+        self.theta0 = np.ones((self.n_param,))
+
 
 class ComponentModel(Model):
     """

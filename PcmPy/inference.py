@@ -367,12 +367,13 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
                 th0 = np.concatenate((th0,Noise.theta0))
             else:
                 th0 = theta0[m][:,s]
-
+            # Get the parameters to be fitted
+            fit_param = np.r_[m.fit_param,np.ones(th0.shape[0]-m.n_param,dtype=bool)]
             #  Now do the fitting, using the preferred optimization routine
             if (m.algorithm=='newton'):
                 fcn = lambda x: likelihood_individ(x, m, YY, Z, X=X,
                                 Noise = Noise, fit_scale = fit_scale, scale_prior = scale_prior, return_deriv = 2,n_channel=n_channel)
-                th, l, INFO = newton(th0, fcn, **optim_param,fit_param=m.fit_param)
+                th, l, INFO = newton(th0, fcn, **optim_param,fit_param=fit_param)
             else:
                 raise(NameError('not implemented yet'))
 

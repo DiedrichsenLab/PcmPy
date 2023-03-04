@@ -86,8 +86,7 @@ def newton(theta0, lossfcn, max_iter=80, thres= 1e-4, hess_reg=1e-4,
                             print('Cant regularise second derivative.. Giving up\n')
                         exitflag=3 # Regularisation increased too much
                         break # Give up
-                theta[fit_param] = theta[fit_param] - dtheta[fit_param]
-
+            theta[fit_param] = theta[fit_param] - dtheta[fit_param]
         # Record the current theta
         thetaH[:,k] = theta
         regH[k] = hess_reg

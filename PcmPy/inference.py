@@ -496,7 +496,7 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
             th0 = np.concatenate((th0,Noise[s].theta0))
 
         # Use externally provided theta, if provided
-        if (theta0 is not None) and (len(theta0) >= m-1):
+        if (theta0 is not None) and (len(theta0) >= i-1):
             th0 = theta0[i]
 
         #  Now do the fitting, using the preferred optimization routine
@@ -522,7 +522,7 @@ def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
     """Fits PCM model(sto N-1 subjects and evaluates the likelihood on the Nth subject.
 
     Only the common model parameters are shared across subjects.The scale and noise parameters
-    are still fitted to each subject. Some model parameters can also be made individual by setting M.common_param
+    are still fitted to each subject. Some model parameters can also be made individual by setting M.common_param to False
 
     Parameters:
         Data (list of pcm.Datasets):
@@ -557,7 +557,7 @@ def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
             time:               Elapsed time in sec
 
         theta (list of np.arrays):
-            List of estimated model parameters - common group parameters come from the training data, scale and noise parameter from the testing data
+            List of estimated model parameters - common group parameters come from the training data, individual parameters from the testing data
 
         G_pred (list of np.arrays):
             List of estimated G-matrices under the model
@@ -578,10 +578,14 @@ def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
         n_model = 1
         M = [M]
 
-    # Get model names
+    # Get model names and common parameters
     m_names = []
-    for m in range(n_model):
-        m_names.append(M[m].name)
+    for m in M:
+        m_names.append(m.name)
+        if hasattr(m,'common_param'):
+            m.common_param = np.array(m.common_param)
+        else:
+            m.common_param = np.ones((m.n_param,), dtype=np.bool_)
 
     # Preallocate output structures
     iterab = [['likelihood','noise','scale'],m_names]
@@ -595,19 +599,28 @@ def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
 
     # Get starting values as for a group fit
     G_avrg = sum(G_hat, axis=0) / n_subj
-    for m in range(n_model):
+    for i,m in enumerate(M):
         if verbose:
             print('Fitting model',m)
+        m.set_theta0(G_avrg)
+        th0 = m.theta0[m.common_param]
 
+        indx_scale = [None] * n_subj
+        indx_noise = [None] * n_subj
         # Get starting guess for theta0 is not provided
-        if hasattr(M[m],'common_param'):
-            common = M[m].common_param
-        else:
-            common = np.ones((M[m].n_param,), dtype=np.bool_)
-        not_common = np.logical_not(common)
-        n_modsu = np.sum(not_common) # Number of subject-specific parameters
-        M[m].set_theta0(G_avrg)
-        th0 = M[m].theta0[common]
+        for s in range(n_subj):
+            th0 = np.concatenate((th0,m.theta0[np.logical_not(m.common_param)]))
+            if (fit_scale):
+                indx_scale[s]=th0.shape[0]
+                G0,_ = m.predict(m.theta0)
+                scale0 = get_scale0(G0, G_hat[s])
+                th0 = np.concatenate((th0,scale0))
+            indx_noise[s]=th0.shape[0]
+            th0 = np.concatenate((th0,Noise[s].theta0))
+
+        # Use externally provided theta, if provided
+        if (theta0 is not None) and (len(theta0) >= i-1):
+            th0 = theta0[i]
 
         # Keep track of what subject the parameter belongs to
         param_indx = np.ones((np.sum(common),)) * -1

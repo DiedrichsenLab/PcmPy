@@ -595,7 +595,7 @@ def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
     theta_ind = [None] * n_model
 
     # Intialize data for groupfit
-    Z, X, YY, n_channel, Noise, G_hat = set_up_fit_group(Data, fixed_effect = fixed_effect, noise_cov = None)
+    Z, X, YY, n_channel, Noise, G_hat = set_up_fit_group(Data, fixed_effect = fixed_effect, noise_cov = noise_cov)
 
     # Get starting values as for a group fit
     G_avrg = sum(G_hat, axis=0) / n_subj

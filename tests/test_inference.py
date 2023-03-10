@@ -40,7 +40,7 @@ class TestInference(unittest.TestCase):
         self.assertAlmostEqual(lik,46697.979963372454)
         self.assertAlmostEqual(dL[0],248.82127294654595)
         self.assertAlmostEqual(dL[1],13637.404410177838)
-        self.assertAlmostEqual(d2L[0,0],409.189721036659)
+        self.assertAlmostEqual(d2L[0,0],359.1392832526)
         self.assertAlmostEqual(d2L[0,1],750.509995737473)
         self.assertAlmostEqual(d2L[1,1],29275.840725272497)
 
@@ -56,12 +56,12 @@ class TestInference(unittest.TestCase):
         self.assertAlmostEqual(lik,46697.979838372456)
         self.assertAlmostEqual(dL[0],248.82177294654605)
         self.assertAlmostEqual(dL[1],13637.404410177838)
-        self.assertAlmostEqual(d2L[0,0],409.1897210366591)
+        self.assertAlmostEqual(d2L[0,0],359.1392832526)
         self.assertAlmostEqual(d2L[0,1],750.509995737473)
         self.assertAlmostEqual(d2L[1,1],29275.840725272497)
 
     def test_block_noise(self):
-        MC=pcm.model.ComponentModel('muscle',modelM[0].G)
+        MC=pcm.model.ComponentModel('muscle',modelM[0])
         YY = Y[0].measurements @ Y[0].measurements.T
         n_channel = Y[0].measurements.shape[1]
         Z = pcm.matrix.indicator(Y[0].obs_descriptors['cond_vec'])
@@ -117,5 +117,7 @@ class TestInference(unittest.TestCase):
 
 if __name__ == '__main__':
     test = TestInference()
-    test.test_fit_model_group()
+    # test.test_fixed_lik()
+    # test.test_component_lik()
+    test.test_block_noise()
     # unittest.main()

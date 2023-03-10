@@ -543,6 +543,26 @@ class BlockPlusIndepNoise(NoiseModel):
             return self.BBT * np.exp(theta[0])
         elif n==1:
             return eye(self.N) * np.exp(theta[1])
+    
+    def set_theta0(self, Y, Z, X=None):
+        """Makes an initial guess on noise parameters
+        Args:
+            Y ([np.array])
+                Data
+            Z ([np.array])
+                Random Effects matrix
+            X ([np.array], optional)
+                Fixed effects matrix.
+        """
+        N, P = Y.shape
+        if X is not None:
+            Z = np.c_[Z, X]
+        RY = Y - Z @ pinv(Z) @ Y
+        noise0 = np.sum(RY*RY)/(P * (N - Z.shape[1]))
+        if noise0 <= 0:
+            raise(NameError("Too many model factors to estimate noise variance. Consider removing terms or setting fixedEffect to 'none'"))
+        self.theta0 = np.array([-1,log(noise0)])
+
 
 class ModelFamily:
     """

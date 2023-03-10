@@ -9,7 +9,7 @@ from numpy import sum, diag, log, eye, exp, trace, einsum
 from PcmPy import model
 
 def newton(theta0, lossfcn, max_iter=80, thres= 1e-4, hess_reg=1e-4,
-             regularization='sEig',verbose=0, fit_param = None):
+             regularization='sEig',verbose=0, fit_indx = None):
     """
     Minimize a loss function using Newton-Raphson with automatic regularization
 
@@ -35,7 +35,7 @@ def newton(theta0, lossfcn, max_iter=80, thres= 1e-4, hess_reg=1e-4,
              0: No feedback,
              1:Important warnings
              2:full feedback regularisation
-        fit_param: Logical vector
+        fit_indx (Logical or integer vector)
             If provided, it will only fit the parameters indicated
     Returns:
             theta (np.array)
@@ -45,10 +45,8 @@ def newton(theta0, lossfcn, max_iter=80, thres= 1e-4, hess_reg=1e-4,
             info (dict)
                 Dictionary with more information abuot the fit
     """
-    if fit_param is None:
-        fit_param = np.ones(theta0.shape,dtype=bool)
 
-    # Initialize Iterations
+    # Initialize Interations
     dF = np.Inf
     H = theta0.shape[0] # Number of parameters
     theta = theta0
@@ -86,7 +84,11 @@ def newton(theta0, lossfcn, max_iter=80, thres= 1e-4, hess_reg=1e-4,
                             print('Cant regularise second derivative.. Giving up\n')
                         exitflag=3 # Regularisation increased too much
                         break # Give up
-            theta[fit_param] = theta[fit_param] - dtheta[fit_param]
+            if fit_indx is None:
+                theta = theta - dtheta
+            else:
+                theta[fit_indx] = theta[fit_indx] - dtheta[fit_indx]
+
         # Record the current theta
         thetaH[:,k] = theta
         regH[k] = hess_reg

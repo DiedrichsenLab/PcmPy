@@ -8,9 +8,10 @@ Collection of different utility functions
 
 import numpy as np
 from numpy import sum,mean,trace,sqrt, zeros, ones
-from PcmPy.matrix import indicator
+from PcmPy.matrix import indicator, pairwise_contrast
 from scipy.linalg import solve, pinv
 from scipy.spatial import procrustes
+from scipy.spatial.distance import squareform
 from numpy.linalg import eigh
 
 def est_G_crossval(Y, Z, part_vec, X=None, S=None):
@@ -104,6 +105,22 @@ def make_pd(G,thresh = 1e-10):
     Glam[Glam < thresh] = thresh # rectify small eigenvalues
     G_pd = V @ np.diag(Glam) @ V.T
     return G_pd
+
+def G_to_dist(G):
+    """Transforms a second moment matrix
+    into a squared Euclidean matrix (mostly for visualization)
+
+    Args:
+        G (ndarray): 2d or 3d array of second moment matrices
+    """
+    K = G.shape[1]
+    C=pairwise_contrast(np.arange(K))
+    if G.ndim == 2:
+        d = np.diag(C @ G @ C.T)
+        D = squareform(d)
+    else:
+        raise(NameError('3d not implemented yet'))
+    return D
 
 def classical_mds(G,contrast=None,align=None,thres=0):
     """Calculates a low-dimensional projection of a G-matrix

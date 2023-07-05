@@ -268,7 +268,8 @@ def group_to_individ_param(theta,M,n_subj):
 
 def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
                     scale_prior = 1e3, noise_cov=None, algorithm=None,
-                    optim_param={}, theta0=None, verbose = True):
+                    optim_param={}, theta0=None, verbose = True,
+                    return_second_deriv=False):
     """Fits Models to a data set individually.
 
     The model parameters are all individually fit.
@@ -344,7 +345,8 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
     index = pd.MultiIndex.from_product(iterab, names=['variable', 'model'])
     T = pd.DataFrame(np.zeros((n_subj, n_model * 3)), columns=index)
     theta = [None] * n_model
-
+    if return_second_deriv:
+        dLdhh = [None] * n_model
     # Determine optimal algorithm for each of the models
     # M = pcm.optimize.best_algorithm(M,algorithm)
 
@@ -377,19 +379,33 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
             else:
                 raise(NameError('not implemented yet'))
 
-            if theta[i] is None:
-                theta[i] = np.zeros((th.shape[0],n_subj))
-            theta[i][:,s] = th
+            # Record results
             T.loc[s,('likelihood',m_names[i])] = l
             T.loc[s,('iterations',m_names[i])] = INFO['iter']+1
             T.loc[s,('noise',m_names[i])] = exp(th[-Noise.n_param])
             if fit_scale:
                 T.loc[s,('scale',m_names[i])] = exp(th[m.n_param])
-    return T,theta
+
+            # Record theta parameters
+            if theta[i] is None:
+                theta[i] = np.zeros((th.shape[0],n_subj))
+            theta[i][:,s] = th
+
+            # If requested, return the second derivative of the likelihood
+            if return_second_deriv:
+                l,dl,ddl = fcn(th)
+                if dLdhh[i] is None:
+                    dLdhh[i] = np.zeros((th.shape[0],n_subj))
+                dLdhh[i][:,s] = np.diag(ddl)
+    if return_second_deriv:
+        return T,theta,dLdhh
+    else:
+        return T,theta
 
 def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
                     scale_prior = 1e3, noise_cov=None, algorithm=None,
-                    optim_param={}, theta0=None, verbose=True):
+                    optim_param={}, theta0=None, verbose=True,
+                    return_second_deriv=False):
     """ Fits PCM models(s) to a group of subjects
 
     The model parameters are (by default) shared across subjects.
@@ -464,6 +480,8 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
     index = pd.MultiIndex.from_product(iterab, names=['variable', 'model'])
     T = pd.DataFrame(np.zeros((n_subj, n_model * 4)), columns=index)
     theta = [None] * n_model
+    if return_second_deriv:
+        dLdhh = [None] * n_model
 
     # Determine optimal algorithm for each of the models
     # M = pcm.optimize.best_algorithm(M,algorithm)
@@ -507,6 +525,12 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
         else:
             raise(NameError('not implemented yet'))
 
+        # If requested, return the second derivative of the likelihood
+        if return_second_deriv:
+            l,dl,ddl = fcn(theta[i])
+            dLdhh[i] = np.diag(ddl)
+
+
         res = likelihood_group(theta[i], m, YY, Z, X=X,
                 Noise = Noise, fit_scale = fit_scale, scale_prior=scale_prior,return_deriv = 0,return_individ=True, n_channel=n_channel)
         T['likelihood',m_names[i]] = -res[0]
@@ -514,7 +538,11 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
         T['noise',m_names[i]] = exp(theta[i][indx_noise])
         if (fit_scale):
             T['scale',m_names[i]] = exp(theta[i][indx_scale])
-    return T,theta
+
+    if return_second_deriv:
+        return T,theta,dLdhh
+    else;
+        return T,theta
 
 def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
                     scale_prior = 1e3, noise_cov=None, algorithm=None,

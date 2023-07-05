@@ -100,7 +100,7 @@ def newton(theta0, lossfcn, max_iter=80, thres= 1e-4, hess_reg=1e-4,
             else:
                 nl[k]=np.Inf
         # Safety check if negative likelihood decreased
-        if (k>0 and (nl[k] - nl[k-1])>1e-16) or np.isnan(nl[k]):
+        if ((k>0 and (nl[k] - nl[k-1])>1e-16)) or np.isnan(nl[k]) or np.any(np.isnan(dFdh)) or np.any(np.isnan(dFdhh)):
             hess_reg = hess_reg * 10 # Increase regularisation
             if verbose == 2:
                 print('Step back. Regularisation:',hess_reg)

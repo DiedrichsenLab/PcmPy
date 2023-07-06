@@ -541,7 +541,7 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
 
     if return_second_deriv:
         return T,theta,dLdhh
-    else;
+    else:
         return T,theta
 
 def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,

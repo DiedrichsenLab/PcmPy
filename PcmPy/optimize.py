@@ -136,3 +136,32 @@ def best_algorithm(M, algorithm=None):
             Overwrite for algorithm
     """
     pass
+
+def mcmc(th0,likelihood_fcn,proposal_sig=0.1,burn_in=100,n_samples=1000):
+    """Implement Markov Chain Monte Carlo sampling for PCM models
+    Metropolis-Hastings algorithm with adaptive proposal distribution
+    """
+    n_params = th0.shape[0]
+    TH = np.empty((n_params,n_samples),dtype=float)
+    l = np.zeros((n_samples,)
+    # Set the starting values: 
+    TH[:,0]= th0
+    l[0] = likelihood_fcn(th0)
+    # Run the chain
+    for i in range(n_samples-1):
+        th = TH[:,i]
+        th_p = th+np.random.normal(0,proposal_sig,(n_params,))
+        l_p = likelihood_fcn(th_p)
+        if l_p > l[i]:
+            TH[:,i+1] = th_p
+            l[i+1] = l_p
+        else:
+            r = np.random.rand()
+            if r < np.exp(l_p-l):
+                TH[:,i+1] = th_p
+                l[i+1] = l_p
+            else:
+                TH[:,i+1] = th
+                l[i+1] = l[i]
+    return TH,l        
+

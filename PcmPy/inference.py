@@ -702,7 +702,7 @@ def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
 def sample_model_group(Data, M, fixed_effect='block', fit_scale=False,
                     scale_prior = 1e3,
                     noise_cov=None,
-                    sample_param={'n_samples':10000,'burnin':100},
+                    sample_param={'n_samples':10000,'burn_in':100},
                     theta0=None,
                     verbose = True):
     """ Approximates the posterior of the parameters of a group model using MCMC sampling
@@ -768,7 +768,7 @@ def sample_model_group(Data, M, fixed_effect='block', fit_scale=False,
     M.set_theta0(G_avrg)
     th0 = M.theta0[M.common_param]
     for s in range(n_subj):
-        th0 = np.concatenate((th0,m.theta0[np.logical_not(m.common_param)]))
+        th0 = np.concatenate((th0,M.theta0[np.logical_not(M.common_param)]))
         if (fit_scale):
             indx_scale[s]=th0.shape[0]
             G0,_ = M.predict(m.theta0)
@@ -783,7 +783,7 @@ def sample_model_group(Data, M, fixed_effect='block', fit_scale=False,
 
     #  Now do the fitting, using the preferred optimization routine
     fcn = lambda x: likelihood_group(x, M, YY, Z, X=X,
-            Noise = Noise, fit_scale = fit_scale, scale_prior=scale_prior, return_deriv = 2,n_channel=n_channel)
+            Noise = Noise, fit_scale = fit_scale, scale_prior=scale_prior, return_deriv = 0,n_channel=n_channel)
     theta, l  = mcmc(th0, fcn, **sample_param)
     return theta,l
 

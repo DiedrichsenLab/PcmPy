@@ -704,7 +704,8 @@ def sample_model_group(Data, M, fixed_effect='block', fit_scale=False,
                     noise_cov=None,
                     sample_param={'n_samples':10000,'burn_in':100},
                     theta0=None,
-                    verbose = True):
+                    verbose = True,
+                    proposal_sd = None):
     """ Approximates the posterior of the parameters of a group model using MCMC sampling
 
     The model parameters are (by default) shared across subjects.
@@ -784,7 +785,7 @@ def sample_model_group(Data, M, fixed_effect='block', fit_scale=False,
     #  Now do the fitting, using the preferred optimization routine
     fcn = lambda x: likelihood_group(x, M, YY, Z, X=X,
             Noise = Noise, fit_scale = fit_scale, scale_prior=scale_prior, return_deriv = 0,n_channel=n_channel)
-    theta, l  = mcmc(th0, fcn, **sample_param)
+    theta, l  = mcmc(th0, fcn, **sample_param, proposal_sd = proposal_sd)
     return theta,l
 
 

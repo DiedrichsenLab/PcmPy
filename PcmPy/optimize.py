@@ -138,7 +138,7 @@ def best_algorithm(M, algorithm=None):
     pass
 
 def mcmc(th0,likelihood_fcn,
-         proposal_sig=0.1,
+         proposal_sd=0.1,
          burn_in=100,
          n_samples=1000,
          verbose=1):
@@ -148,28 +148,31 @@ def mcmc(th0,likelihood_fcn,
     n_params = th0.shape[0]
     TH = np.empty((n_params,n_samples),dtype=float)
     l = np.zeros((n_samples,),dtype=float)
-    # Set the starting values: 
+    # Set the starting values:
     TH[:,0]= th0
     l[0] = -likelihood_fcn(th0)[0]
     rejections = 0
+    # Generate proposal e-masse:
+    dth = np.random.normal(np.zeros((1,n_samples)),proposal_sd.reshape(-1,1))
+    r = np.random.rand(n_samples)
+
     # Run the chain
     for i in range(n_samples-1):
         if verbose > 0:
             if np.mod(i+1,1000) == 0:
-                print(f'{i} samples {rejections/i*100:.1f}%rejection\n')
-        th_p = TH[:,i]+np.random.normal(0,proposal_sig,(n_params,))
+                print(f'{i+1} samples {rejections/i*100:.1f}% rejection')
+        th_p = TH[:,i]+dth[:,i]
         l_p = -likelihood_fcn(th_p)[0]
         if l_p > l[i]:
             TH[:,i+1] = th_p
             l[i+1] = l_p
         else:
-            r = np.random.rand()
-            if r < np.exp(l_p-l[i]):
+            if r[i] < np.exp(l_p-l[i]):
                 TH[:,i+1] = th_p
                 l[i+1] = l_p
             else:
                 TH[:,i+1] = TH[:,i]
                 l[i+1] = l[i]
                 rejections += 1
-    return TH,l        
+    return TH,l
 

@@ -17,7 +17,7 @@ import cProfile
 
 def sim_correlation_sample(n_items=1,
                      n_part=6,
-                     log_signal=-2,
+                     log_signal=-1,
                      corr=0.7,
                      n_subj=16,
                      rem_mpat=False,

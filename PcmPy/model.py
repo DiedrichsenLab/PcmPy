@@ -18,6 +18,8 @@ class Model:
         self.n_param = 0
         self.algorithm = 'newton' # Default optimization algorithm
         self.theta0 = np.zeros((0,)) # Empty theta0
+        self.prior_mean = None  # Prior mean
+        self.prior_prec = None  # Prior precision
 
     def predict(self,theta):
         """
@@ -27,6 +29,14 @@ class Model:
 
     def set_theta0(self,G_hat):
         pass
+
+    def get_prior(self):
+        """ Returns prior mean and precision
+        """
+        if (self.prior_mean is None) or (self.prior_prec is None):
+            self.prior_mean = np.zeros((self.n_param,))
+            self.prior_prec = np.zeros((self.n_param,))
+        return (self.prior_mean,self.prior_prec)
 
 class FeatureModel(Model):
     """
@@ -72,7 +82,7 @@ class FeatureModel(Model):
             dA = self.Ac[i,:,:] @ A.transpose()
             dG_dTheta[i,:,:] =  dA + dA.transpose()
         return (G,dG_dTheta)
-    
+
 
     def set_theta0(self,G_hat):
         self.theta0 = np.ones((self.n_param,))
@@ -543,7 +553,7 @@ class BlockPlusIndepNoise(NoiseModel):
             return self.BBT * np.exp(theta[0])
         elif n==1:
             return eye(self.N) * np.exp(theta[1])
-    
+
     def set_theta0(self, Y, Z, X=None):
         """Makes an initial guess on noise parameters
         Args:

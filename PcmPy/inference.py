@@ -14,7 +14,10 @@ from PcmPy.optimize import newton,mcmc
 
 def likelihood_individ(theta, M, YY, Z, X=None,
                        Noise = IndependentNoise(),
-                       n_channel=1, fit_scale=False, scale_prior = 1e3, return_deriv=0):
+                       n_channel=1,
+                       fit_scale=False,
+                       scale_prior = 1e3,
+                       return_deriv=0):
     """Negative Log-Likelihood of the data and derivative in respect to the parameters
 
     Parameters:
@@ -57,8 +60,9 @@ def likelihood_individ(theta, M, YY, Z, X=None,
     Q = Z.shape[1]
     n_param = theta.shape[0]
 
-    # Get G-matrix and derivative of G-matrix in respect to parameters
+    # Get Model parameters, G-matrix and derivative of G-matrix in respect to parameters
     model_params = theta[range(M.n_param)]
+    prior_mean, prior_prec = M.get_prior()
     G,dGdtheta = M.predict(model_params)
 
     # Get the scale parameter and scale G by it
@@ -99,8 +103,11 @@ def likelihood_individ(theta, M, YY, Z, X=None,
     if X is not None:
         # P/2 log(det(X'V^-1*X))
         llik -= n_channel * sum(log(diag(cholesky(X.T @ iV @X)))) #
+
+    # add the log-normal prior to the parameters
     if fit_scale:
         llik -= scale_param**2 / (2 * scale_prior) # Add prior
+    llik -= 0.5 * ((model_params - prior_mean)**2 * prior_prec).sum() # Add prior
 
     # If no derivative - exit here
     if return_deriv == 0:
@@ -131,6 +138,9 @@ def likelihood_individ(theta, M, YY, Z, X=None,
     dLdtheta = np.zeros((n_param,))
     for i in range(n_param):
         dLdtheta[i] = -n_channel / 2 * trace(iVdV[i]) + 0.5 * einsum('ij,ij->',iVdV[i], B) # Trace(A@B.T)
+
+    # Add log-normal prior to the model and possible scale parameters
+    dLdtheta[range(M.n_param)] -= (model_params - prior_mean) * prior_prec
     if fit_scale:
         dLdtheta[indx_scale] -= scale_param / scale_prior
 
@@ -144,6 +154,9 @@ def likelihood_individ(theta, M, YY, Z, X=None,
         for j in range(i, n_param):
             d2L[i, j] = -n_channel / 2 * einsum('ij,ji->',iVdV[i],iVdV[j]) # Trace(A@B)
             d2L[j, i] = d2L[i, j]
+
+    # Add log-normal prior to the model and possible scale parameters
+    d2L[range(M.n_param), range(M.n_param)] -= prior_prec
     if fit_scale:
         d2L[indx_scale, indx_scale] -= 1 / scale_prior
 

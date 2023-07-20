@@ -2,7 +2,7 @@ from distutils.core import setup
 setup(
   name = 'PcmPy',
   packages = ['PcmPy'],
-  version = '0.9.1',
+  version = '1.0.0',
   license='MIT',
   description = 'Pattern Component Modeling of multivariate activity patterns',
   author = 'Jörn Diedrichsen',

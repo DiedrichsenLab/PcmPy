@@ -40,9 +40,9 @@ def likelihood_individ(theta, M, YY, Z, X=None,
         scale_prior (float):
             Prior variance for log-normal prior on scale parameter
         return_deriv (int):
-            0: Only return negative loglikelihood
+            0: Only return negative loglikelihood (default)
             1: Return first derivative
-            2: Return first and second derivative (default)
+            2: Return first and second derivative
 
     Returns:
         negloglike (double):
@@ -62,7 +62,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
 
     # Get Model parameters, G-matrix and derivative of G-matrix in respect to parameters
     model_params = theta[range(M.n_param)]
-    prior_mean, prior_prec = M.get_prior()
+    prior, dprior, ddprior = M.get_prior(model_params)
     G,dGdtheta = M.predict(model_params)
 
     # Get the scale parameter and scale G by it
@@ -107,7 +107,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
     # add the log-normal prior to the parameters
     if fit_scale:
         llik -= scale_param**2 / (2 * scale_prior) # Add prior
-    llik -= 0.5 * ((model_params - prior_mean)**2 * prior_prec).sum() # Add prior
+    llik += prior # Add prior
 
     # If no derivative - exit here
     if return_deriv == 0:
@@ -140,7 +140,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
         dLdtheta[i] = -n_channel / 2 * trace(iVdV[i]) + 0.5 * einsum('ij,ij->',iVdV[i], B) # Trace(A@B.T)
 
     # Add log-normal prior to the model and possible scale parameters
-    dLdtheta[range(M.n_param)] -= (model_params - prior_mean) * prior_prec
+    dLdtheta[range(M.n_param)] += dprior
     if fit_scale:
         dLdtheta[indx_scale] -= scale_param / scale_prior
 
@@ -156,7 +156,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
             d2L[j, i] = d2L[i, j]
 
     # Add log-normal prior to the model and possible scale parameters
-    d2L[range(M.n_param), range(M.n_param)] -= prior_prec
+    d2L[range(M.n_param), range(M.n_param)] += prior_prec
     if fit_scale:
         d2L[indx_scale, indx_scale] -= 1 / scale_prior
 
@@ -174,9 +174,10 @@ def likelihood_group(theta, M, YY, Z, X=None,
     Parameters:
         theta (np.array):
             Vector of (log-)model parameters consisting of common model parameters (M.n_param or sum of M.common_param) +
-            participant-specific parameters (interated by subject):
+            participant-specific parameters (iterated by subject):
             individ model param (not in common_param),
-            scale parameter,noise parameters
+            scale parameter
+            noise parameters
         M (pcm.Model):
             Model object
         YY (List of np.arrays):

@@ -30,13 +30,24 @@ class Model:
     def set_theta0(self,G_hat):
         pass
 
-    def get_prior(self):
-        """ Returns prior mean and precision
+    def get_prior(self,theta):
+        """ Independent Gaussian prior on parameters
+        Args:
+            theta (np.array): Vector of model parameters
+        Returns:
+            prior (float): log-prior probability (up to a constant)
+            dprior (np.array): derivative of log-prior probability in respect to theta
+            ddprior (np.array): second derivative of log-prior probability in respect to theta
         """
         if (self.prior_mean is None) or (self.prior_prec is None):
-            self.prior_mean = np.zeros((self.n_param,))
-            self.prior_prec = np.zeros((self.n_param,))
-        return (self.prior_mean,self.prior_prec)
+            prior = 0
+            dprior = np.zeros((self.n_param,))
+            ddprior = np.zeros((self.n_param,self.n_param))
+        else:
+            prior = -0.5 * ((theta-self.prior_mean)**2  * self.prior_prec).sum() # independent Gaussian prior
+            dprior = -(theta - self.prior_mean) * self.prior_prec
+            ddprior = -np.diag(self.prior_prec)
+        return prior,dprior,ddprior
 
 class FeatureModel(Model):
     """
@@ -310,6 +321,29 @@ class CorrelationModel(Model):
         else:
             r = self.corr # Fixed correlations
         return r
+
+class CorrelationModelRefprior(CorrelationModel):
+    """ Correlation model with reference prior"""
+    def get_prior(self,theta):
+        """ Reference prior (1-r^2)*sigma_1^{-1}*sigma_2^{-1}
+        Args:
+            theta (np.array): Vector of model parameters
+        Returns:
+            prior (float): log-prior probability (up to a constant)
+            dprior (np.array): derivative of log-prior probability in respect to theta
+            ddprior (np.array): second derivative of log-prior probability in respect to theta
+        """
+        if self.corr is not None:
+            prior = 0
+            dprior = np.zeros((self.n_param,))
+            ddprior = np.zeros((self.n_param,self.n_param))
+        else:
+            z = theta[self.n_param-1]
+            ez = np.exp(2*z) + 2 + np.exp(-2*z)
+            prior = np.log(16)-2*np.log(ez)
+            dprior = -4*(np.exp(2*z)-np.exp(-2*z))/ez
+            ddprior = -16/ez
+        return prior,dprior,ddprior
 
 class FixedModel(Model):
     """

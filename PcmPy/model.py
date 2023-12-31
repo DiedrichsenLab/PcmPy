@@ -338,11 +338,13 @@ class CorrelationModelRefprior(CorrelationModel):
             dprior = np.zeros((self.n_param,))
             ddprior = np.zeros((self.n_param,self.n_param))
         else:
+            dprior = np.zeros((self.n_param,))
+            ddprior = np.zeros((self.n_param,self.n_param))
             z = theta[self.n_param-1]
             ez = np.exp(2*z) + 2 + np.exp(-2*z)
             prior = np.log(16)-2*np.log(ez)
-            dprior = -4*(np.exp(2*z)-np.exp(-2*z))/ez
-            ddprior = -16/ez
+            dprior[-1] = -4*(np.exp(2*z)-np.exp(-2*z))/ez
+            ddprior[-1,-1] = -16/ez
         return prior,dprior,ddprior
 
 class FixedModel(Model):

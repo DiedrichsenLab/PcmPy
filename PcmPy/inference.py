@@ -156,7 +156,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
             d2L[j, i] = d2L[i, j]
 
     # Add log-normal prior to the model and possible scale parameters
-    d2L[range(M.n_param), range(M.n_param)] += prior_prec
+    d2L[0:M.n_param, 0:M.n_param] += ddprior
     if fit_scale:
         d2L[indx_scale, indx_scale] -= 1 / scale_prior
 

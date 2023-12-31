@@ -160,12 +160,13 @@ def classical_mds(G,contrast=None,align=None,thres=0):
         Glam = np.diag(W.T @ W)
     return W,Glam
 
-def check_grad(fcn,theta0,delta):
+def check_grad(fcn,theta0,delta=0.0001):
     """Checks the gradient of a function around a value for theta
 
     Args:
         fcn (function): needs to return criterion and derivative
         theta0 (ndarray): Vector of parameters
+        delta (float): Step size for gradient. Defaults to 0.0001.
     """
     x,dx = fcn(theta0)
     for i in range(len(theta0)):

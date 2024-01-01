@@ -1,3 +1,4 @@
+from typing import Any
 import numpy as np
 from numpy import exp, eye, log, sqrt
 from numpy.linalg import solve, eigh, cholesky, pinv
@@ -20,7 +21,6 @@ class Model:
         self.theta0 = np.zeros((0,)) # Empty theta0
         self.prior_mean = None  # Prior mean
         self.prior_prec = None  # Prior precision
-
     def predict(self,theta):
         """
         Prediction function: Needs to be implemented
@@ -324,6 +324,11 @@ class CorrelationModel(Model):
 
 class CorrelationModelRefprior(CorrelationModel):
     """ Correlation model with reference prior"""
+    def __init__(self,name,within_cov = None,num_items=1,
+                corr=None,cond_effect = False):
+        CorrelationModel.__init__(self,name,within_cov,num_items,corr,cond_effect)
+        self.prior_weight=1
+
     def get_prior(self,theta):
         """ Reference prior (1-r^2)*sigma_1^{-1}*sigma_2^{-1}
         Args:
@@ -342,9 +347,9 @@ class CorrelationModelRefprior(CorrelationModel):
             ddprior = np.zeros((self.n_param,self.n_param))
             z = theta[self.n_param-1]
             ez = np.exp(2*z) + 2 + np.exp(-2*z)
-            prior = np.log(16)-2*np.log(ez)
-            dprior[-1] = -4*(np.exp(2*z)-np.exp(-2*z))/ez
-            ddprior[-1,-1] = -16/ez
+            prior = self.prior_weight * np.log(16)-2*np.log(ez)
+            dprior[-1] = -self.prior_weight *4*(np.exp(2*z)-np.exp(-2*z))/ez
+            ddprior[-1,-1] = -self.prior_weight *16/ez
         return prior,dprior,ddprior
 
 class FixedModel(Model):

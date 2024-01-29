@@ -710,7 +710,7 @@ def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
     return T,theta_ind
 
 
-def sample_model_indiv(Data, M, 
+def sample_model_individ(Data, M, 
                     fixed_effect='block', 
                     fit_scale=False,
                     scale_prior = 1e3,
@@ -754,7 +754,7 @@ def sample_model_indiv(Data, M,
                     fit_scale=fit_scale,
                     scale_prior = 1e3, 
                     noise_cov=noise_cov,
-                    return_second_deriv=True):
+                    return_second_deriv=True)
 
     # Prepare the data for all the subjects
     Z, X, YY, n_channel, Noise, G_hat = set_up_fit(Data,
@@ -762,14 +762,14 @@ def sample_model_indiv(Data, M,
 
     # Use externally provided theta, if provided
     if (theta0 is None):
-        th0 = th_fit[0]
-    else    
+        th0 = th_fit[0].squeeze()
+    else:   
         th0 = theta0
      
     #  Now do the fitting, using the preferred optimization routine
-    fcn = lambda x: likelihood_group(x, M, YY, Z, X=X,
+    fcn = lambda x: likelihood_individ(x, M, YY, Z, X=X,
             Noise = Noise, fit_scale = fit_scale, scale_prior=scale_prior, return_deriv = 0,n_channel=n_channel)
-    theta, l  = mcmc(th0, fcn, **sample_param, proposal_sd = proposal_sd)
+    theta, l  = mcmc(th0, fcn, **sample_param, proposal_sd = 1/np.sqrt(dLL[0].squeeze()))
     return theta,l
 
 

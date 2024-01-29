@@ -374,13 +374,12 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
                 print('Fitting Subj',s,'model',i)
             # Get starting guess for theta0 is not provideddf
             if (theta0 is None) or (len(theta0) <= i) or (theta0[i].shape[1]<s):
-                m.set_theta0(G_hat)
-                th0 = m.theta0
+                th0  = m.get_theta0(G_hat)
                 if (fit_scale):
-                    G_pred, _ = m.predict(m.theta0)
+                    G_pred, _ = m.predict(th0)
                     scale0 = get_scale0(G_pred, G_hat)
                     th0 = np.concatenate((th0,scale0))
-                th0 = np.concatenate((th0,Noise.theta0))
+                th0 = np.concatenate((th0,Noise.get_theta0(Data[s].measurements, Z, X)))
             else:
                 th0 = theta0[m][:,s]
             # Get the parameters to be fitted
@@ -514,22 +513,22 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
     for i,m in enumerate(M):
         if verbose:
             print('Fitting group model',i)
-        # Get starting guess for theta0 is not provided
-        m.set_theta0(G_avrg)
-        th0 = m.theta0[m.common_param]
-        for s in range(n_subj):
-            th0 = np.concatenate((th0,m.theta0[np.logical_not(m.common_param)]))
-            if (fit_scale):
-                indx_scale[s]=th0.shape[0]
-                G0,_ = m.predict(m.theta0)
-                scale0 = get_scale0(G0, G_hat[s])
-                th0 = np.concatenate((th0,scale0))
-            indx_noise[s]=th0.shape[0]
-            th0 = np.concatenate((th0,Noise[s].theta0))
-
         # Use externally provided theta, if provided
         if (theta0 is not None) and (len(theta0) >= i-1):
             th0 = theta0[i]
+        else:
+            # Get starting guess for theta0 is not provided
+            th_gr = m.get_theta0(G_avrg) # Group theta
+            th0 = th_gr[m.common_param]
+            for s in range(n_subj):
+                th0 = np.concatenate((th0,th_gr[np.logical_not(m.common_param)]))
+                if (fit_scale):
+                    indx_scale[s]=th0.shape[0]
+                    G0,_ = m.predict(th_gr)
+                    scale0 = get_scale0(G0, G_hat[s])
+                    th0 = np.concatenate((th0,scale0))
+                indx_noise[s]=th0.shape[0]
+                th0 = np.concatenate((th0,Noise[s].get_theta0(Data[s].measurements, Z, X)))
 
         #  Now do the fitting, using the preferred optimization routine
         if (m.algorithm=='newton'):
@@ -644,27 +643,27 @@ def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
     for i,m in enumerate(M):
         if verbose:
             print('Fitting group cross model',i)
-        # Initialize parameters
-        m.set_theta0(G_avrg)
-        th0 = m.theta0[m.common_param]
-        # Keep track which one belongs to which subject (-1 is group)
-        param_indx = np.ones((m.common_param.sum(),))*-1
-
-        # Get starting guess for theta0 is not provided
-        for s in range(n_subj):
-            ths = m.theta0[np.logical_not(m.common_param)]
-            if (fit_scale):
-                G0,_ = m.predict(m.theta0)
-                scale0 = get_scale0(G0, G_hat[s])
-                ths = np.concatenate((ths,scale0))
-            ths = np.concatenate((ths,Noise[s].theta0))
-            # add to the group parameters and list
-            th0 = np.concatenate((th0,ths))
-            param_indx = np.concatenate((param_indx,np.full((len(ths),),s)))
-
         # Use externally provided theta, if provided
         if (theta0 is not None) and (len(theta0) >= i-1):
             th0 = theta0[i]
+        else:
+            th_gr = m.get_theta0(G_avrg)
+            th0 = th_gr[m.common_param]
+            # Keep track which one belongs to which subject (-1 is group)
+            param_indx = np.ones((m.common_param.sum(),))*-1
+
+            # Get starting guess for theta0 is not provided
+            for s in range(n_subj):
+                ths = th_gr[np.logical_not(m.common_param)]
+                if (fit_scale):
+                    G0,_ = m.predict(th_gr)
+                    scale0 = get_scale0(G0, G_hat[s])
+                    ths = np.concatenate((ths,scale0))
+                ths = np.concatenate((ths,Noise[s].get_theta0(Data[s].measurements, Z[s], X[s])))
+                # add to the group parameters and list
+                th0 = np.concatenate((th0,ths))
+                param_indx = np.concatenate((param_indx,np.full((len(ths),),s)))
+
 
         #  Get a group fit
         if (m.algorithm=='newton'):
@@ -681,10 +680,7 @@ def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
             notS = np.arange(n_subj) != s # Get indices of training group
             pNotS = param_indx != s
 
-            # Set theta0 and model (for direct estimation)
-            G_avrg = sum(G_hat[notS], axis=0) / n_subj
-            m.set_theta0(G_avrg)
-            # Otherwise, use the group fit parameters, as starting
+            # Use the group fit parameters, as starting
             th0 = theta_gr[pNotS]
 
             #  Now do the fitting, using the preferred optimization routine
@@ -713,7 +709,73 @@ def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
             T['noise',m_names[i]][s] = exp(theta_ind[i][-1,s])
     return T,theta_ind
 
-def sample_model_group(Data, M, fixed_effect='block', fit_scale=False,
+
+def sample_model_indiv(Data, M, 
+                    fixed_effect='block', 
+                    fit_scale=False,
+                    scale_prior = 1e3,
+                    noise_cov=None,
+                    sample_param={'n_samples':10000,'burn_in':100},
+                    theta0=None,
+                    verbose = True):
+    """ Approximates the posterior of the parameters of a group model using MCMC sampling
+
+    The model parameters are (by default) shared across subjects.
+    Scale and noise parameters are individual for each subject.
+    Some model parameters can also be made individual by setting M.common_param
+
+    Parameters:
+        Data (list of pcm.Datasets):
+            List data set has partition and condition descriptors
+        M (pcm.Model):
+            Models to sampled
+        fixed effect:
+            None, 'block', or nd-array / list of nd-arrays. Default ('block') add an intercept for each partition
+        fit_scale (bool):
+            Fit a additional scale parameter for each subject? Default is set to False.
+        scale_prior (float):
+            Prior variance for log-normal prior on scale parameter
+        noise_cov:
+            None (i.i.d), 'block', or optional specific covariance structure of the noise
+        sample_param (dict):
+            Additional paramters to be passed to MCMC sampler
+        theta0 (np.array):
+            starting values
+
+    Returns:
+        theta (np.array):
+            Sampled parameters
+        l (np.array):
+            Log-likelihood corresponding to the sampled parameters
+    """
+    # Get an initial fit to the data
+    T,th_fit,dLL = fit_model_individ(Data, M, 
+                    fixed_effect=fixed_effect, 
+                    fit_scale=fit_scale,
+                    scale_prior = 1e3, 
+                    noise_cov=noise_cov,
+                    return_second_deriv=True):
+
+    # Prepare the data for all the subjects
+    Z, X, YY, n_channel, Noise, G_hat = set_up_fit(Data,
+            fixed_effect = fixed_effect, noise_cov = noise_cov)
+
+    # Use externally provided theta, if provided
+    if (theta0 is None):
+        th0 = th_fit[0]
+    else    
+        th0 = theta0
+     
+    #  Now do the fitting, using the preferred optimization routine
+    fcn = lambda x: likelihood_group(x, M, YY, Z, X=X,
+            Noise = Noise, fit_scale = fit_scale, scale_prior=scale_prior, return_deriv = 0,n_channel=n_channel)
+    theta, l  = mcmc(th0, fcn, **sample_param, proposal_sd = proposal_sd)
+    return theta,l
+
+
+def sample_model_group(Data, M, 
+                    fixed_effect='block', 
+                    fit_scale=False,
                     scale_prior = 1e3,
                     noise_cov=None,
                     sample_param={'n_samples':10000,'burn_in':100},
@@ -779,22 +841,22 @@ def sample_model_group(Data, M, fixed_effect='block', fit_scale=False,
     if verbose:
         print('Sampling group model')
 
-    # Get starting guess for theta0 is not provided
-    M.set_theta0(G_avrg)
-    th0 = M.theta0[M.common_param]
-    for s in range(n_subj):
-        th0 = np.concatenate((th0,M.theta0[np.logical_not(M.common_param)]))
-        if (fit_scale):
-            indx_scale[s]=th0.shape[0]
-            G0,_ = M.predict(m.theta0)
-            scale0 = get_scale0(G0, G_hat[s])
-            th0 = np.concatenate((th0,scale0))
-        indx_noise[s]=th0.shape[0]
-        th0 = np.concatenate((th0,Noise[s].theta0))
-
     # Use externally provided theta, if provided
     if (theta0 is not None):
         th0 = theta0
+    else:   # Get starting guess for theta0 is not provided
+        th_gr = M.get_theta0(G_avrg)
+        th0 = th_gr[M.common_param]
+        for s in range(n_subj):
+            th0 = np.concatenate((th0,th_gr[np.logical_not(M.common_param)]))
+            if (fit_scale):
+                indx_scale[s]=th0.shape[0]
+                G0,_ = M.predict(th_gr)
+                scale0 = get_scale0(G0, G_hat[s])
+                th0 = np.concatenate((th0,scale0))
+            indx_noise[s]=th0.shape[0]
+            th0 = np.concatenate((th0,Noise[s].get_theta0(Data[s].measurements, Z[s], X[s])))
+
 
     #  Now do the fitting, using the preferred optimization routine
     fcn = lambda x: likelihood_group(x, M, YY, Z, X=X,
@@ -863,8 +925,6 @@ def set_up_fit(Data, fixed_effect = 'block', noise_cov = None):
     # Get a cross-validated estimate of G
     G_hat, _ = pcm.util.est_G_crossval(Y, Z, part_vec, X = X)
 
-    # Estimate noise parameters starting values
-    Noise.set_theta0(Y,Z,X)
     return [Z, X, YY, n_channel, Noise, G_hat]
 
 def set_up_fit_group(Data, fixed_effect = 'block', noise_cov = None):

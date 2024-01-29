@@ -18,17 +18,33 @@ class Model:
         self.name = name
         self.n_param = 0
         self.algorithm = 'newton' # Default optimization algorithm
-        self.theta0 = np.zeros((0,)) # Empty theta0
+        self.theta0 = None      # Initial (or fixed) guess for parameters
         self.prior_mean = None  # Prior mean
         self.prior_prec = None  # Prior precision
+
     def predict(self,theta):
         """
         Prediction function: Needs to be implemented
         """
         raise(NameError("caluclate G needs to be implemented"))
 
-    def set_theta0(self,G_hat):
-        pass
+    def est_theta0(self,G_hat):
+        """
+        Estimate initial guess for parameters
+        """
+        return np.zeros((self.n_param,))
+    
+    def get_theta0(self,G_hat):
+        """ Return initial guess for parameters
+        Args:
+            G_hat (np.array): Crossvalidated estimate of G
+        Returns:
+            theta0 (np.array): Initial guess for parameters (model.theta0 if given)
+        """
+        if self.theta0 is None:
+            return self.est_theta0(G_hat)
+        else:
+            return self.theta0
 
     def get_prior(self,theta):
         """ Independent Gaussian prior on parameters
@@ -95,9 +111,8 @@ class FeatureModel(Model):
         return (G,dG_dTheta)
 
 
-    def set_theta0(self,G_hat):
-        self.theta0 = np.ones((self.n_param,))
-
+    def est_theta0(self,G_hat):
+        return np.ones((self.n_param,))
 
 class ComponentModel(Model):
     """
@@ -139,7 +154,7 @@ class ComponentModel(Model):
         G = dG_dTheta.sum(axis=0)
         return (G,dG_dTheta)
 
-    def set_theta0(self,G_hat):
+    def est_theta0(self,G_hat):
         """Sets theta0 based on the crossvalidated second-moment
 
         Parameters:
@@ -147,14 +162,14 @@ class ComponentModel(Model):
                 Crossvalidated estimate of G
         """
         if self.n_param==0:
-            self.theta0 = np.zeros((0,))
+            return np.zeros((0,))
         else:
             X = np.zeros((G_hat.shape[0]**2, self.n_param))
             for i in range(self.n_param):
                 X[:,i] = self.Gc[i,:,:].reshape((-1,))
             h0 = pinv(X) @ G_hat.reshape((-1,1))
             h0[h0<10e-4] = 10e-4
-            self.theta0 = log(h0.reshape(-1,))
+            return log(h0.reshape(-1,))
 
 class CorrelationModel(Model):
     """
@@ -283,9 +298,9 @@ class CorrelationModel(Model):
             dG_dTheta[np.ix_([n],i2,i1)] = dC.T
         return (G,dG_dTheta)
 
-    def set_theta0(self,G_hat):
+    def est_theta0(self,G_hat):
         """
-        Sets theta0 based on the crossvalidated second-moment
+        gets theta0 based on the crossvalidated second-moment
 
         Parameters:
             G_hat (numpy.ndarray)
@@ -298,10 +313,11 @@ class CorrelationModel(Model):
             X[:,i] = self.Gc[i,:,:].reshape((-1,))
         h0 = pinv(X) @ G_hat.reshape((-1,1))
         h0[h0<10e-4] = 10e-4
-        self.theta0 = log(h0.reshape(-1,))
+        th0 = log(h0.reshape(-1,))
         if self.corr is None:
-            self.theta0 = np.concatenate([self.theta0,np.zeros((1,))])
-
+            th0 =  np.concatenate([th0,np.zeros((1,))])
+        return th0
+    
     def get_correlation(self,theta):
         """
         Returns the correlations from a set of fitted parameters
@@ -427,7 +443,7 @@ class FreeModel(Model):
             dGdtheta[i,:,self.row[i]] += A[:,self.col[i]]
         return (G,dGdtheta)
 
-    def set_theta0(self,G_hat):
+    def est_theta0(self,G_hat):
         """
         Sets theta0 based on the crossvalidated second-moment
 
@@ -437,7 +453,7 @@ class FreeModel(Model):
         """
         G_pd = pcm.util.make_pd(G_hat)
         A   = cholesky(G_pd)
-        self.theta0 = A[self.row, self.col]
+        return A[self.row, self.col]
 
 
 class NoiseModel:
@@ -456,7 +472,7 @@ class NoiseModel:
     def derivative(self, theta):
         raise(NameError("derivative needs to be implemented"))
 
-    def set_theta0(self, Y, Z, X=None):
+    def get_theta0(self, Y, Z, X=None):
         raise(NameError("get_theta0 needs to be implemented"))
 
 class IndependentNoise(NoiseModel):
@@ -467,7 +483,6 @@ class IndependentNoise(NoiseModel):
     def __init__(self):
         NoiseModel.__init__(self)
         self.n_param = 1
-        theta0 = 0
 
     def predict(self, theta):
         """
@@ -511,7 +526,7 @@ class IndependentNoise(NoiseModel):
         """
         return np.exp(theta[0])
 
-    def set_theta0(self, Y, Z, X=None):
+    def get_theta0(self, Y, Z, X=None):
         """Makes an initial guess on noise paramters
 
         Args:
@@ -521,6 +536,9 @@ class IndependentNoise(NoiseModel):
                 Random Effects matrix
             X ([np.array], optional)
                 Fixed effects matrix.
+        Returns:
+            theta0 (np.array)
+                Initial guess for noise parameters
         """
         N, P = Y.shape
         if X is not None:
@@ -529,7 +547,7 @@ class IndependentNoise(NoiseModel):
         noise0 = np.sum(RY*RY)/(P * (N - Z.shape[1]))
         if noise0 <= 0:
             raise(NameError("Too many model factors to estimate noise variance. Consider removing terms or setting runEffect to 'none'"))
-        self.theta0 = np.array([log(noise0)])
+        return np.array([log(noise0)])
 
 class BlockPlusIndepNoise(NoiseModel):
     """
@@ -595,7 +613,7 @@ class BlockPlusIndepNoise(NoiseModel):
         elif n==1:
             return eye(self.N) * np.exp(theta[1])
 
-    def set_theta0(self, Y, Z, X=None):
+    def get_theta0(self, Y, Z, X=None):
         """Makes an initial guess on noise parameters
         Args:
             Y ([np.array])
@@ -612,7 +630,7 @@ class BlockPlusIndepNoise(NoiseModel):
         noise0 = np.sum(RY*RY)/(P * (N - Z.shape[1]))
         if noise0 <= 0:
             raise(NameError("Too many model factors to estimate noise variance. Consider removing terms or setting fixedEffect to 'none'"))
-        self.theta0 = np.array([-1,log(noise0)])
+        return np.array([-1,log(noise0)])
 
 
 class ModelFamily:

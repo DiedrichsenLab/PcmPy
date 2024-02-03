@@ -406,10 +406,9 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
 
             # If requested, return the second derivative of the likelihood
             if return_second_deriv:
-                l,dl,ddl = fcn(th)
                 if dLdhh[i] is None:
-                    dLdhh[i] = np.zeros((th.shape[0],n_subj))
-                dLdhh[i][:,s] = np.diag(ddl)
+                    dLdhh[i] = np.zeros((n_subj,th.shape[0],th.shape[0]))
+                l,dl,dLdhh[i][s,:,:] = fcn(th)
     if return_second_deriv:
         return T,theta,dLdhh
     else:
@@ -540,9 +539,7 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
 
         # If requested, return the second derivative of the likelihood
         if return_second_deriv:
-            l,dl,ddl = fcn(theta[i])
-            dLdhh[i] = np.diag(ddl)
-
+            l,dl,dLdhh[i] = fcn(theta[i])
 
         res = likelihood_group(theta[i], m, YY, Z, X=X,
                 Noise = Noise, fit_scale = fit_scale, scale_prior=scale_prior,return_deriv = 0,return_individ=True, n_channel=n_channel)
@@ -710,8 +707,8 @@ def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
     return T,theta_ind
 
 
-def sample_model_individ(Data, M, 
-                    fixed_effect='block', 
+def sample_model_individ(Data, M,
+                    fixed_effect='block',
                     fit_scale=False,
                     scale_prior = 1e3,
                     noise_cov=None,
@@ -749,10 +746,10 @@ def sample_model_individ(Data, M,
             Log-likelihood corresponding to the sampled parameters
     """
     # Get an initial fit to the data
-    T,th_fit,dLL = fit_model_individ(Data, M, 
-                    fixed_effect=fixed_effect, 
+    T,th_fit,dLL = fit_model_individ(Data, M,
+                    fixed_effect=fixed_effect,
                     fit_scale=fit_scale,
-                    scale_prior = 1e3, 
+                    scale_prior = 1e3,
                     noise_cov=noise_cov,
                     return_second_deriv=True)
 
@@ -763,18 +760,22 @@ def sample_model_individ(Data, M,
     # Use externally provided theta, if provided
     if (theta0 is None):
         th0 = th_fit[0].squeeze()
-    else:   
+    else:
         th0 = theta0
-     
+
     #  Now do the fitting, using the preferred optimization routine
     fcn = lambda x: likelihood_individ(x, M, YY, Z, X=X,
             Noise = Noise, fit_scale = fit_scale, scale_prior=scale_prior, return_deriv = 0,n_channel=n_channel)
-    theta, l  = mcmc(th0, fcn, **sample_param, proposal_sd = 1/np.sqrt(dLL[0].squeeze()))
+    proposal_sd = 1/np.sqrt(np.diag(dLL[0][0]))
+    proposal_sd[proposal_sd>5]=5
+    proposal_sd[proposal_sd<0.001]=0.001
+
+    theta, l  = mcmc(th0, fcn, **sample_param, proposal_sd = proposal_sd)
     return theta,l
 
 
-def sample_model_group(Data, M, 
-                    fixed_effect='block', 
+def sample_model_group(Data, M,
+                    fixed_effect='block',
                     fit_scale=False,
                     scale_prior = 1e3,
                     noise_cov=None,

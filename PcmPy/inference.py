@@ -712,14 +712,10 @@ def sample_model_individ(Data, M,
                     fit_scale=False,
                     scale_prior = 1e3,
                     noise_cov=None,
-                    sample_param={'n_samples':10000,'burn_in':100},
-                    theta0=None,
-                    verbose = True):
+                    n_mcmc_samples=10000,
+                    n_local_samples= 2000):
     """ Approximates the posterior of the parameters of a group model using MCMC sampling
-
-    The model parameters are (by default) shared across subjects.
-    Scale and noise parameters are individual for each subject.
-    Some model parameters can also be made individual by setting M.common_param
+    If requested, it also tries to approximated the marginal likelihood using mnethod outlined in Chib & Jeliazkov (2011)
 
     Parameters:
         Data (list of pcm.Datasets):
@@ -752,16 +748,12 @@ def sample_model_individ(Data, M,
                     scale_prior = 1e3,
                     noise_cov=noise_cov,
                     return_second_deriv=True)
+    th0 = th_fit[0].squeeze()
+    n_param = th0.shape[0]
 
     # Prepare the data for all the subjects
     Z, X, YY, n_channel, Noise, G_hat = set_up_fit(Data,
             fixed_effect = fixed_effect, noise_cov = noise_cov)
-
-    # Use externally provided theta, if provided
-    if (theta0 is None):
-        th0 = th_fit[0].squeeze()
-    else:
-        th0 = theta0
 
     #  Now do the fitting, using the preferred optimization routine
     fcn = lambda x: likelihood_individ(x, M, YY, Z, X=X,
@@ -770,8 +762,32 @@ def sample_model_individ(Data, M,
     proposal_sd[proposal_sd>5]=5
     proposal_sd[proposal_sd<0.001]=0.001
 
-    theta, l  = mcmc(th0, fcn, **sample_param, proposal_sd = proposal_sd)
-    return theta,l
+    theta, l  = mcmc(th0, fcn,
+                     n_samples = n_mcmc_samples,
+                     proposal_sd = proposal_sd)
+
+    # Get samples around the maximum likelihood
+    l_max = -fcn(th0)[0]
+    l_local = np.zeros((n_local_samples,))
+    z = np.random.normal(0,1,(n_param,n_local_samples))
+    th_local = z * proposal_sd.reshape(-1,1) + th0.reshape(-1,1)
+    for i in range(n_local_samples):
+        l_local[i] = -fcn(th_local[:,i])[0]
+
+    # Numerator of the marginal likelihood
+    logq = -n_param/2 * np.log(2*np.pi) -0.5 * np.log(proposal_sd**2).sum() * -0.5*np.sum((theta-th0.reshape(-1,1))**2/proposal_sd.reshape(-1,1)**2,axis=0)
+    alp = np.minimum(0,l-l_max)
+    num = (np.exp(alp+logq)).mean()
+
+    # Denominator of the marginal likelihood
+    alp = np.minimum(0,l_local-l_max)
+    den = (np.exp(alp)).mean()
+    log_posterior = np.log(num/den)     # Log-posterior evaluated at the maximum likelihood
+
+    # Log marginal likelihood
+    log_marg_lik = l_max - log_posterior
+
+    return theta,l,log_marg_lik
 
 
 def sample_model_group(Data, M,

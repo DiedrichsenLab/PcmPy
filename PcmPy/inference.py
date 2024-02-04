@@ -409,6 +409,8 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
                 if dLdhh[i] is None:
                     dLdhh[i] = np.zeros((n_subj,th.shape[0],th.shape[0]))
                 l,dl,dLdhh[i][s,:,:] = fcn(th)
+                # log(det(inv(dLdhh))) = 2*sum(log(diag(cholesky(dLdhh))))
+                T.loc[s,('logdetPosterior',m_names[i])] = 2 * sum(log(diag(cholesky(dLdhh[i][s,:,:]))))
     if return_second_deriv:
         return T,theta,dLdhh
     else:

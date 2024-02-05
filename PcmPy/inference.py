@@ -4,7 +4,7 @@ Inference module for PCM toolbox with main functionality for model fitting and e
 """
 
 import numpy as np
-from numpy.linalg import solve, eigh, cholesky
+from numpy.linalg import solve, eigh, cholesky, cond
 from numpy import sum, diag, log, eye, exp, trace, einsum
 import pandas as pd
 import PcmPy as pcm
@@ -410,7 +410,10 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
                     dLdhh[i] = np.zeros((n_subj,th.shape[0],th.shape[0]))
                 l,dl,dLdhh[i][s,:,:] = fcn(th)
                 # log(det(inv(dLdhh))) = 2*sum(log(diag(cholesky(dLdhh))))
-                T.loc[s,('logdetPosterior',m_names[i])] = 2 * sum(log(diag(cholesky(dLdhh[i][s,:,:]))))
+                if log(cond(dLdhh[i][s,:,:]))>16:
+                    T.loc[s,('logdetPosterior',m_names[i])] = np.nan
+                else:
+                    T.loc[s,('logdetPosterior',m_names[i])] = 2 * sum(log(diag(cholesky(dLdhh[i][s,:,:]))))
     if return_second_deriv:
         return T,theta,dLdhh
     else:

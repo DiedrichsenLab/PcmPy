@@ -532,7 +532,7 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
                     scale0 = get_scale0(G0, G_hat[s])
                     th0 = np.concatenate((th0,scale0))
                 indx_noise[s]=th0.shape[0]
-                th0 = np.concatenate((th0,Noise[s].get_theta0(Data[s].measurements, Z, X)))
+                th0 = np.concatenate((th0,Noise[s].get_theta0(Data[s].measurements, Z[s], X[s])))
 
         #  Now do the fitting, using the preferred optimization routine
         if (m.algorithm=='newton'):

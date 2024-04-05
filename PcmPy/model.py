@@ -368,6 +368,35 @@ class CorrelationModelRefprior(CorrelationModel):
             ddprior[-1,-1] = -self.prior_weight *16/ez
         return prior,dprior,ddprior
 
+class CorrelationModelFlatprior(CorrelationModel):
+    """ Correlation model with flat prior on [-1,1]"""
+    def __init__(self,name,within_cov = None,num_items=1,
+                corr=None,cond_effect = False):
+        CorrelationModel.__init__(self,name,within_cov,num_items,corr,cond_effect)
+        self.prior_weight=1
+
+    def get_prior(self,theta):
+        """ Flat prior is 1 on r 
+        (1-r2) in z-space
+
+        Args:
+            theta (np.array): Vector of model parameters
+        Returns:
+            prior (float): log-prior probability (up to a constant)
+            dprior (np.array): derivative of log-prior probability in respect to theta
+            ddprior (np.array): second derivative of log-prior probability in respect to theta
+        """
+        if self.corr is not None:
+            prior = 0
+            dprior = np.zeros((self.n_param,))
+            ddprior = np.zeros((self.n_param,self.n_param))
+        else:
+            dprior = np.zeros((self.n_param,))
+            ddprior = np.zeros((self.n_param,self.n_param))
+            z = theta[self.n_param-1]
+            prior = np.log(1-np.tanh(z)**2)
+        return prior,dprior,ddprior
+
 class FixedModel(Model):
     """
     Fixed PCM with a rigid predicted G matrix and no parameters

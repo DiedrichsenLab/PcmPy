@@ -62,7 +62,6 @@ def likelihood_individ(theta, M, YY, Z, X=None,
 
     # Get Model parameters, G-matrix and derivative of G-matrix in respect to parameters
     model_params = theta[range(M.n_param)]
-    prior, dprior, ddprior = M.get_prior(model_params)
     G,dGdtheta = M.predict(model_params)
 
     # Get the scale parameter and scale G by it
@@ -107,7 +106,6 @@ def likelihood_individ(theta, M, YY, Z, X=None,
     # add the log-normal prior to the parameters
     if fit_scale:
         llik -= scale_param**2 / (2 * scale_prior) # Add prior
-    llik += prior # Add prior
 
     # If no derivative - exit here
     if return_deriv == 0:
@@ -139,8 +137,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
     for i in range(n_param):
         dLdtheta[i] = -n_channel / 2 * trace(iVdV[i]) + 0.5 * einsum('ij,ij->',iVdV[i], B) # Trace(A@B.T)
 
-    # Add log-normal prior to the model and possible scale parameters
-    dLdtheta[range(M.n_param)] += dprior
+    # Add log-normal prior to the scale parameters
     if fit_scale:
         dLdtheta[indx_scale] -= scale_param / scale_prior
 
@@ -155,8 +152,7 @@ def likelihood_individ(theta, M, YY, Z, X=None,
             d2L[i, j] = -n_channel / 2 * einsum('ij,ji->',iVdV[i],iVdV[j]) # Trace(A@B)
             d2L[j, i] = d2L[i, j]
 
-    # Add log-normal prior to the model and possible scale parameters
-    d2L[0:M.n_param, 0:M.n_param] += ddprior
+    # Add log-normal prior to the scale parameters
     if fit_scale:
         d2L[indx_scale, indx_scale] -= 1 / scale_prior
 
@@ -247,6 +243,44 @@ def likelihood_group(theta, M, YY, Z, X=None,
         ra.append(np.sum(dFdhh,axis=0)) # Second derivative
     return ra
 
+def posterior_individ(theta, M, YY, Z, X=None,
+                       Noise = IndependentNoise(),
+                       n_channel=1,
+                       fit_scale=False,
+                       scale_prior = 1e3,
+                       return_deriv=0):
+    """Returns the non-normalized negative log-posterior of the individual model parameters
+    See likelihood_individ for inout and output parameters
+    """
+    nllik = likelihood_individ(theta, M, YY, Z, X,Noise,n_channel,fit_scale,scale_prior,return_deriv)
+    model_params = theta[range(M.n_param)]
+    prior, dprior, ddprior = M.get_prior(model_params)
+    nllik[0] -= prior # Add prior
+    if return_deriv>0:
+        nllik[1][0:M.n_param] -= dprior
+    if return_deriv>1:
+        nllik[2][0:M.n_param, 0:M.n_param] -= ddprior
+    return nllik
+
+def posterior_group(theta, M, YY, Z, X=None,
+                       Noise=IndependentNoise(),
+                       n_channel=1, fit_scale=True, scale_prior=1e3,
+                       return_deriv=0,return_individ=False):
+    """Returns the non-normalized negative log-posterior of the group model parameters.
+    See likelihood_group for input and output parameters
+    Assignment of prior still neeeds to be implemented
+    """
+    nllik = likelihood_individ(theta, M, YY, Z, X,Noise,n_channel,fit_scale,scale_prior,return_deriv)
+    model_params = theta[range(M.n_param)]
+    prior, dprior, ddprior = M.get_prior(model_params)
+    ths,indx=group_to_individ_param(theta,M,n_subj)
+    nllik[0] -= prior # Add prior
+    if return_deriv>0:
+        nllik[1][0:M.n_param] -= dprior
+    if return_deriv>1:
+        nllik[2][0:M.n_param, 0:M.n_param] -= ddprior
+    return nllik
+
 
 def group_to_individ_param(theta,M,n_subj):
     """ Takes a vector of group parameters and rearranges them
@@ -258,6 +292,7 @@ def group_to_individ_param(theta,M,n_subj):
         n_subj (int): Number of subjects
     Returns:
         theta_indiv (ndarray): n_params x n_subj Matrix of group parameters
+        indx (ndarray): n_params x n_subj Matrix of indices into original parameters
     """
     if hasattr(M,'common_param'):
         common = np.array(M.common_param)
@@ -283,7 +318,7 @@ def group_to_individ_param(theta,M,n_subj):
 def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
                     scale_prior = 1e3, noise_cov=None, algorithm=None,
                     optim_param={}, theta0=None, verbose = True,
-                    return_second_deriv=False):
+                    return_second_deriv=False,add_prior=False):
     """Fits Models to a data set individually.
 
     The model parameters are all individually fit.
@@ -309,6 +344,11 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
             List of starting values (same format as return argument theta)
         verbose (bool):
             Provide printout of progress? Default: True
+        return_second_deriv (bool):
+            Returns final Hessian of the loss function
+        add_prior (bool):
+            If set to true, optimizes likelihood + prior function
+
 
     Returns:
         T (pandas.dataframe):
@@ -386,7 +426,11 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
             fit_param = np.r_[m.fit_param,np.ones(th0.shape[0]-m.n_param,dtype=bool)]
             #  Now do the fitting, using the preferred optimization routine
             if (m.algorithm=='newton'):
-                fcn = lambda x: likelihood_individ(x, m, YY, Z, X=X,
+                if add_prior:
+                    fcn = lambda x: posterior_individual(x, m, YY, Z, X=X,
+                                Noise = Noise, fit_scale = fit_scale, scale_prior = scale_prior, return_deriv = 2,n_channel=n_channel)
+                else:
+                    fcn = lambda x: likelihood_individ(x, m, YY, Z, X=X,
                                 Noise = Noise, fit_scale = fit_scale, scale_prior = scale_prior, return_deriv = 2,n_channel=n_channel)
                 th, l, INFO = newton(th0, fcn, **optim_param,fit_param=fit_param)
             else:
@@ -422,7 +466,7 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
 def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
                     scale_prior = 1e3, noise_cov=None, algorithm=None,
                     optim_param={}, theta0=None, verbose=True,
-                    return_second_deriv=False):
+                    return_second_deriv=False,add_prior=False):
     """ Fits PCM models(s) to a group of subjects
 
     The model parameters are (by default) shared across subjects.
@@ -536,8 +580,12 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
 
         #  Now do the fitting, using the preferred optimization routine
         if (m.algorithm=='newton'):
-            fcn = lambda x: likelihood_group(x, m, YY, Z, X=X,
-                Noise = Noise, fit_scale = fit_scale, scale_prior=scale_prior, return_deriv = 2,n_channel=n_channel)
+            if add_prior:
+                fcn = lambda x: posterior_group(x, m, YY, Z, X=X, Noise = Noise, fit_scale = fit_scale,
+                                                scale_prior = scale_prior, return_deriv = 2,n_channel=n_channel)
+            else:
+                fcn = lambda x: likelihood_group(x, m, YY, Z, X=X,
+                    Noise = Noise, fit_scale = fit_scale, scale_prior=scale_prior, return_deriv = 2,n_channel=n_channel)
             theta[i], l, INFO = newton(th0, fcn, **optim_param)
         else:
             raise(NameError('not implemented yet'))
@@ -752,7 +800,8 @@ def sample_model_individ(Data, M,
                     fit_scale=fit_scale,
                     scale_prior = 1e3,
                     noise_cov=noise_cov,
-                    return_second_deriv=True)
+                    return_second_deriv=True,
+                    add_prior=True)
     th0 = th_fit[0].squeeze()
     n_param = th0.shape[0]
 
@@ -761,7 +810,7 @@ def sample_model_individ(Data, M,
             fixed_effect = fixed_effect, noise_cov = noise_cov)
 
     #  Now do the fitting, using the preferred optimization routine
-    fcn = lambda x: likelihood_individ(x, M, YY, Z, X=X,
+    fcn = lambda x: posterior_individ(x, M, YY, Z, X=X,
             Noise = Noise, fit_scale = fit_scale, scale_prior=scale_prior, return_deriv = 0,n_channel=n_channel)
     proposal_sd = 1/np.sqrt(np.diag(dLL[0][0]))
     proposal_sd[proposal_sd>5]=5
@@ -881,7 +930,7 @@ def sample_model_group(Data, M,
 
 
     #  Now do the fitting, using the preferred optimization routine
-    fcn = lambda x: likelihood_group(x, M, YY, Z, X=X,
+    fcn = lambda x: posterior_group(x, M, YY, Z, X=X,
             Noise = Noise, fit_scale = fit_scale, scale_prior=scale_prior, return_deriv = 0,n_channel=n_channel)
     theta, l  = mcmc(th0, fcn, **sample_param, proposal_sd = proposal_sd)
     return theta,l

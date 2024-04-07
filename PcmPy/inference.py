@@ -253,6 +253,7 @@ def posterior_individ(theta, M, YY, Z, X=None,
     See likelihood_individ for inout and output parameters
     """
     nllik = likelihood_individ(theta, M, YY, Z, X,Noise,n_channel,fit_scale,scale_prior,return_deriv)
+    nllik = np.array(nllik,dtype=object)
     model_params = theta[range(M.n_param)]
     prior, dprior, ddprior = M.get_prior(model_params)
     nllik[0] -= prior # Add prior
@@ -427,7 +428,7 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
             #  Now do the fitting, using the preferred optimization routine
             if (m.algorithm=='newton'):
                 if add_prior:
-                    fcn = lambda x: posterior_individual(x, m, YY, Z, X=X,
+                    fcn = lambda x: posterior_individ(x, m, YY, Z, X=X,
                                 Noise = Noise, fit_scale = fit_scale, scale_prior = scale_prior, return_deriv = 2,n_channel=n_channel)
                 else:
                     fcn = lambda x: likelihood_individ(x, m, YY, Z, X=X,

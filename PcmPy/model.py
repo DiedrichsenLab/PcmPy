@@ -339,7 +339,8 @@ class CorrelationModel(Model):
         return r
 
 class CorrelationModelRefprior(CorrelationModel):
-    """ Correlation model with reference prior"""
+    """ Correlation model with reference prior
+    """
     def __init__(self,name,within_cov = None,num_items=1,
                 corr=None,cond_effect = False):
         CorrelationModel.__init__(self,name,within_cov,num_items,corr,cond_effect)

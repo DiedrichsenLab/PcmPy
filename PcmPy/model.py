@@ -70,10 +70,9 @@ class Model:
         str = f'Modeltype: {type(self)}\n'
         str += f'Name: {self.name}\n'
         str += f'num params: {self.n_param}\n'
-        fields = self.__dir__()
+        fields = vars(self)
         for f in fields:
-            if f[0] != '_':
-                str += f'{f}: {self.__getattribute__(f)}\n'
+            str += f'{f}: {self.__getattribute__(f)}\n'
         return str
 
 class FeatureModel(Model):

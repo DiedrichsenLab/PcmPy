@@ -65,6 +65,17 @@ class Model:
             ddprior = -np.diag(self.prior_prec)
         return prior,dprior,ddprior
 
+    def __str__(self):
+        """ Return string representation of the model"""
+        str = f'Modeltype: {type(self)}\n'
+        str += f'Name: {self.name}\n'
+        str += f'num params: {self.n_param}\n'
+        fields = self.__dir__()
+        for f in fields:
+            if f[0] != '_':
+                str += f'{f}: {self.__getattribute__(f)}\n'
+        return str
+
 class FeatureModel(Model):
     """
     Feature model:

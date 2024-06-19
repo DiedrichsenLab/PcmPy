@@ -341,8 +341,8 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
             None (i.i.d), 'block', or optional specific covariance structure of the noise
         optim_param (dict):
             Additional paramters to be passed to the optimizer
-        theta0 (list of np.arrays):
-            List of starting values (same format as return argument theta)
+        theta0 (np.array or list of np.arrays):
+            Starting values (n_param x n_subj - same as fitted theta)
         verbose (bool):
             Provide printout of progress? Default: True
         return_second_deriv (bool):
@@ -364,7 +364,7 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
 
         theta (list of np.arrays):
             List of estimated model parameters, each a
-            #params x #numSubj np.array
+            n_param x n_subj np.array
 
         G_pred (list of np.arrays):
             List of estimated G-matrices under the model
@@ -384,6 +384,8 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
     else:
         n_model = 1
         M = [M]
+        if (theta0 is not None) and (not isinstance(theta0,list)):
+            theta0 = [theta0]
 
     # Get model names and determine fitted params
     m_names = []
@@ -413,7 +415,7 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
         for i,m in enumerate(M):
             if verbose:
                 print('Fitting Subj',s,'model',i)
-            # Get starting guess for theta0 is not provideddf
+            # Get starting guess for theta0 is not provided
             if (theta0 is None) or (len(theta0) <= i) or (theta0[i].shape[1]<s):
                 th0  = m.get_theta0(G_hat)
                 if (fit_scale):
@@ -422,7 +424,7 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
                     th0 = np.concatenate((th0,scale0))
                 th0 = np.concatenate((th0,Noise.get_theta0(Data[s].measurements, Z, X)))
             else:
-                th0 = theta0[m][:,s]
+                th0 = theta0[i][:,s]
             # Get the parameters to be fitted
             fit_param = np.r_[m.fit_param,np.ones(th0.shape[0]-m.n_param,dtype=bool)]
             #  Now do the fitting, using the preferred optimization routine

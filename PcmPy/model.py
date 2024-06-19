@@ -4,6 +4,7 @@ from numpy import exp, eye, log, sqrt
 from numpy.linalg import solve, eigh, cholesky, pinv
 import PcmPy as pcm
 import pandas as pd
+import warnings
 
 class Model:
     """
@@ -33,7 +34,7 @@ class Model:
         Estimate initial guess for parameters
         """
         return np.zeros((self.n_param,))
-    
+
     def get_theta0(self,G_hat):
         """ Return initial guess for parameters
         Args:
@@ -265,6 +266,8 @@ class CorrelationModel(Model):
         n = self.n_wparam * self.num_cond + self.num_cond * self.cond_effect # Number of basic parameters
         o = self.num_cond * self.cond_effect # Number of condition
         dG_dTheta = np.zeros((self.n_param,self.Gc.shape[1],self.Gc.shape[1]))
+
+        warnings.filterwarnings('ignore')
         exp_theta=np.reshape(np.exp(theta[0:n]),(n,1,1)) # Bring into the right shape for broadcasting
         dG_dTheta[0:n,:,:] = self.Gc * exp_theta  # This is also the derivative dexp(x)/dx = exp(x)
         # Sum current G-matrix without the condition effects
@@ -327,7 +330,7 @@ class CorrelationModel(Model):
         if self.corr is None:
             th0 =  np.concatenate([th0,np.zeros((1,))])
         return th0
-    
+
     def get_correlation(self,theta):
         """
         Returns the correlations from a set of fitted parameters
@@ -387,7 +390,7 @@ class CorrelationModelFlatprior(CorrelationModel):
         self.prior_weight=1
 
     def get_prior(self,theta):
-        """ Flat prior is 1 on r 
+        """ Flat prior is 1 on r
         (1-r2) in z-space
 
         Args:

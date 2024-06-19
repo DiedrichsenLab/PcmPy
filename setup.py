@@ -2,13 +2,13 @@ from distutils.core import setup
 setup(
   name = 'PcmPy',
   packages = ['PcmPy'],
-  version = '1.0.0',
+  version = '1.1.0',
   license='MIT',
   description = 'Pattern Component Modeling of multivariate activity patterns',
   author = 'Jörn Diedrichsen',
   author_email = 'joern.diedrichsen@googlemail.com',
   url = 'https://github.com/DiedrichsenLab/PCMPy',
-  download_url = 'https://github.com/DiedrichsenLab/PcmPy/archive/refs/tags/v0.9.1.tar.gz',
+  download_url = 'https://github.com/DiedrichsenLab/PcmPy/archive/refs/tags/v1.1.0.tar.gz',
   keywords = ['statistics', 'imaging analysis', 'multivariate'],
   install_requires=[
           'numpy',

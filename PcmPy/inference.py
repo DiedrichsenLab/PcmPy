@@ -271,10 +271,9 @@ def posterior_group(theta, M, YY, Z, X=None,
     See likelihood_group for input and output parameters
     Assignment of prior still neeeds to be implemented
     """
-    nllik = likelihood_individ(theta, M, YY, Z, X,Noise,n_channel,fit_scale,scale_prior,return_deriv)
+    nllik = likelihood_group(theta, M, YY, Z, X,Noise,n_channel,fit_scale,scale_prior,return_deriv)
     model_params = theta[range(M.n_param)]
     prior, dprior, ddprior = M.get_prior(model_params)
-    ths,indx=group_to_individ_param(theta,M,n_subj)
     nllik[0] -= prior # Add prior
     if return_deriv>0:
         nllik[1][0:M.n_param] -= dprior
@@ -850,7 +849,8 @@ def sample_model_group(Data, M,
                     fit_scale=False,
                     scale_prior = 1e3,
                     noise_cov=None,
-                    sample_param={'n_samples':10000,'burn_in':100},
+                    n_mcmc_samples=10000,
+                    n_mcmc_chains=1,
                     theta0=None,
                     verbose = True,
                     proposal_sd = None):
@@ -859,6 +859,7 @@ def sample_model_group(Data, M,
     The model parameters are (by default) shared across subjects.
     Scale and noise parameters are individual for each subject.
     Some model parameters can also be made individual by setting M.common_param
+    The starting values are provided for the different chains for the group parameter
 
     Parameters:
         Data (list of pcm.Datasets):
@@ -899,41 +900,31 @@ def sample_model_group(Data, M,
     else:
         M.common_param = np.ones((M.n_param,), dtype=np.bool_)
 
+    # Get maximum posterior fit
+    T,th_fit,dLL = fit_model_group(Data, M,
+                    fixed_effect=fixed_effect,
+                    fit_scale=fit_scale,
+                    scale_prior = 1e3,
+                    noise_cov=noise_cov,
+                    return_second_deriv=True,
+                    add_prior=True)
+    th0 = th_fit[0].squeeze()
+    n_param = th0.shape[0]
+
     # Prepare the data for all the subjects
     Z, X, YY, n_channel, Noise, G_hat = set_up_fit_group(Data,
             fixed_effect = fixed_effect, noise_cov = noise_cov)
 
-    # Average second moment
-    G_avrg = sum(G_hat, axis=0) / n_subj
-
-    # Initialize the different indices
-    indx_scale = [None] * n_subj
-    indx_noise = [None] * n_subj
-
-    if verbose:
-        print('Sampling group model')
-
-    # Use externally provided theta, if provided
-    if (theta0 is not None):
-        th0 = theta0
-    else:   # Get starting guess for theta0 is not provided
-        th_gr = M.get_theta0(G_avrg)
-        th0 = th_gr[M.common_param]
-        for s in range(n_subj):
-            th0 = np.concatenate((th0,th_gr[np.logical_not(M.common_param)]))
-            if (fit_scale):
-                indx_scale[s]=th0.shape[0]
-                G0,_ = M.predict(th_gr)
-                scale0 = get_scale0(G0, G_hat[s])
-                th0 = np.concatenate((th0,scale0))
-            indx_noise[s]=th0.shape[0]
-            th0 = np.concatenate((th0,Noise[s].get_theta0(Data[s].measurements, Z[s], X[s])))
-
-
     #  Now do the fitting, using the preferred optimization routine
-    fcn = lambda x: posterior_group(x, M, YY, Z, X=X,
+    fcn = lambda x: posterior_individ(x, M, YY, Z, X=X,
             Noise = Noise, fit_scale = fit_scale, scale_prior=scale_prior, return_deriv = 0,n_channel=n_channel)
-    theta, l  = mcmc(th0, fcn, **sample_param, proposal_sd = proposal_sd)
+    proposal_sd = 1/np.sqrt(np.diag(dLL[0][0]))
+    proposal_sd[proposal_sd>5]=5
+    proposal_sd[proposal_sd<0.001]=0.001
+
+    theta, l  = mcmc(th0, fcn,
+                     n_samples = n_mcmc_samples,
+                     proposal_sd = proposal_sd)
     return theta,l
 
 

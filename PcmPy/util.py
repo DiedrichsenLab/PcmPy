@@ -54,8 +54,9 @@ def est_G_crossval(Y, Z, part_vec, X=None, S=None):
     G = np.zeros((n_part,n_cond,n_cond)) # Allocate memory
 
     # If fixed effects are given, remove
+    Yr = Y.copy()
     if X is not None:
-        Y -= X @ pinv(X) @ Y
+        Yr -= X @ pinv(X) @ Yr
 
     # Estimate condition means within each run and crossvalidate
     for i in range(n_part):
@@ -63,13 +64,13 @@ def est_G_crossval(Y, Z, part_vec, X=None, S=None):
         indxA = part_vec == part[i]
         Za = Z[indxA,:]
         # Za = Za[:,any(Za,1)] # restrict to regressors that are not all 0
-        Ya = Y[indxA,:]
+        Ya = Yr[indxA,:]
 
         # remainder of conditions
         indxB = part_vec != part[i]
         Zb = Z[indxB, :]
         # Zb    = Zb(:,any(Zb,1));    % Restrict to regressors that are not
-        Yb = Y[indxB, :]
+        Yb = Yr[indxB, :]
 
         a = pinv(Za) @ Ya
         b = pinv(Zb) @ Yb

@@ -56,15 +56,15 @@ class Model:
             dprior (np.array): derivative of log-prior probability in respect to theta
             ddprior (np.array): second derivative of log-prior probability in respect to theta
         """
-        if (self.prior_mean is None) or (self.prior_prec is None):
-            prior = 0
-            dprior = np.zeros((self.n_param,))
-            ddprior = np.zeros((self.n_param,self.n_param))
-        else:
-            prior = -0.5 * ((theta-self.prior_mean)**2  * self.prior_prec).sum() # independent Gaussian prior
-            dprior = -(theta - self.prior_mean) * self.prior_prec
-            ddprior = -np.diag(self.prior_prec)
-        return prior,dprior,ddprior
+        logprior = 0
+        dprior = np.zeros((self.n_param,))
+        ddprior = np.zeros((self.n_param,self.n_param))
+        if (self.prior is not None):
+            for i,prior_fcn in enumerate(self.prior):
+                if prior_fcn is not None:
+                    lp,dprior[i],ddprior[i,i] = prior_fcn(theta[i],**self.prior_param[i])
+                    logprior += lp
+        return logprior,dprior,ddprior
 
     def __str__(self):
         """ Return string representation of the model"""
@@ -350,66 +350,6 @@ class CorrelationModel(Model):
         else:
             r = self.corr # Fixed correlations
         return r
-
-class CorrelationModelRefprior(CorrelationModel):
-    """ Correlation model with reference prior
-    """
-    def __init__(self,name,within_cov = None,num_items=1,
-                corr=None,cond_effect = False):
-        CorrelationModel.__init__(self,name,within_cov,num_items,corr,cond_effect)
-        self.prior_weight=1
-
-    def get_prior(self,theta):
-        """ Reference prior (1-r^2)*sigma_1^{-1}*sigma_2^{-1}
-        Args:
-            theta (np.array): Vector of model parameters
-        Returns:
-            prior (float): log-prior probability (up to a constant)
-            dprior (np.array): derivative of log-prior probability in respect to theta
-            ddprior (np.array): second derivative of log-prior probability in respect to theta
-        """
-        if self.corr is not None:
-            prior = 0
-            dprior = np.zeros((self.n_param,))
-            ddprior = np.zeros((self.n_param,self.n_param))
-        else:
-            dprior = np.zeros((self.n_param,))
-            ddprior = np.zeros((self.n_param,self.n_param))
-            z = theta[self.n_param-1]
-            ez = np.exp(2*z) + 2 + np.exp(-2*z)
-            prior = self.prior_weight * np.log(16)-2*np.log(ez)
-            dprior[-1] = -self.prior_weight *4*(np.exp(2*z)-np.exp(-2*z))/ez
-            ddprior[-1,-1] = -self.prior_weight *16/ez
-        return prior,dprior,ddprior
-
-class CorrelationModelFlatprior(CorrelationModel):
-    """ Correlation model with flat prior on [-1,1]"""
-    def __init__(self,name,within_cov = None,num_items=1,
-                corr=None,cond_effect = False):
-        CorrelationModel.__init__(self,name,within_cov,num_items,corr,cond_effect)
-        self.prior_weight=1
-
-    def get_prior(self,theta):
-        """ Flat prior is 1 on r
-        (1-r2) in z-space
-
-        Args:
-            theta (np.array): Vector of model parameters
-        Returns:
-            prior (float): log-prior probability (up to a constant)
-            dprior (np.array): derivative of log-prior probability in respect to theta
-            ddprior (np.array): second derivative of log-prior probability in respect to theta
-        """
-        if self.corr is not None:
-            prior = 0
-            dprior = np.zeros((self.n_param,))
-            ddprior = np.zeros((self.n_param,self.n_param))
-        else:
-            dprior = np.zeros((self.n_param,))
-            ddprior = np.zeros((self.n_param,self.n_param))
-            z = theta[self.n_param-1]
-            prior = np.log(1-np.tanh(z)**2)
-        return prior,dprior,ddprior
 
 class FixedModel(Model):
     """

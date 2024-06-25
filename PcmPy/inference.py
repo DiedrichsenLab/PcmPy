@@ -271,7 +271,13 @@ def posterior_group(theta, M, YY, Z, X=None,
     See likelihood_group for input and output parameters
     Assignment of prior still neeeds to be implemented
     """
+    n_subj = len(YY)
+    n_param = theta.shape[0]
+    ths,indx=group_to_individ_param(theta,M,n_subj)
+
+
     nllik = likelihood_group(theta, M, YY, Z, X,Noise,n_channel,fit_scale,scale_prior,return_deriv)
+    nllik = np.array(nllik,dtype=object)
     model_params = theta[range(M.n_param)]
     prior, dprior, ddprior = M.get_prior(model_params)
     nllik[0] -= prior # Add prior

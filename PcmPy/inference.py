@@ -371,9 +371,9 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
             List of estimated model parameters, each a
             n_param x n_subj np.array
 
-        G_pred (list of np.arrays):
-            List of estimated G-matrices under the model
-
+        Hessian (list of np.arrays):
+            If return_second_deriv is true, then the it returns a 
+            (nsubj,n_params,n_params) ndarray for each model
     """
 
     # Get the number of subjects
@@ -502,7 +502,10 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
             List of starting values (same format as return argument theta)
         verbose (bool):
             Provide printout of progress? Default: True
-
+        return_second_deriv (bool):
+            Returns final Hessian of the loss function
+        add_prior (bool):
+            If set to true, optimizes likelihood + prior function
     Returns:
         T (pandas.dataframe):
             Dataframe with the fields:
@@ -517,8 +520,9 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
             List of estimated model parameters each one is a vector with
             #num_commonparams + #num_singleparams x #numSubj elements
 
-        G_pred (list of np.arrays):
-            List of estimated G-matrices under the model
+        Hessian (list of np.arrays):
+            If return_second_deriv is true, then the it returns a 
+            (n_params,n_params) ndarray for each model
     """
 
     # Get the number of subjects
@@ -924,9 +928,9 @@ def sample_model_group(Data, M,
             fixed_effect = fixed_effect, noise_cov = noise_cov)
 
     #  Now do the fitting, using the preferred optimization routine
-    fcn = lambda x: posterior_individ(x, M, YY, Z, X=X,
+    fcn = lambda x: posterior_group(x, M, YY, Z, X=X,
             Noise = Noise, fit_scale = fit_scale, scale_prior=scale_prior, return_deriv = 0,n_channel=n_channel)
-    proposal_sd = 1/np.sqrt(np.diag(dLL[0][0]))
+    proposal_sd = 1/np.sqrt(np.diag(dLL[0]))
     proposal_sd[proposal_sd>5]=5
     proposal_sd[proposal_sd<0.001]=0.001
 

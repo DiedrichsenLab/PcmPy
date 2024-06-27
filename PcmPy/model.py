@@ -47,22 +47,27 @@ class Model:
         else:
             return self.theta0
 
-    def get_prior(self,theta):
+    def get_prior(self,theta,param_type=None):
         """ Independent Gaussian prior on parameters
         Args:
             theta (np.array): Vector of model parameters
+            param_type (ndarray): Indx into type of parameter: 0-M.n_param (model), M.n_param: Scale + Noise.
         Returns:
             prior (float): log-prior probability (up to a constant)
             dprior (np.array): derivative of log-prior probability in respect to theta
             ddprior (np.array): second derivative of log-prior probability in respect to theta
         """
+        if param_type is None:
+            param_type = np.arrange((self.n_param,))
+        n_param = len(param_type)
         logprior = 0
-        dprior = np.zeros((self.n_param,))
-        ddprior = np.zeros((self.n_param,self.n_param))
+        dprior = np.zeros((n_param,))
+        ddprior = np.zeros((n_param,n_param))
         if (self.prior is not None):
-            for i,prior_fcn in enumerate(self.prior):
-                if prior_fcn is not None:
-                    lp,dprior[i],ddprior[i,i] = prior_fcn(theta[i],**self.prior_param[i])
+            for i in range(n_param):
+                j = param_type[i]
+                if (len(self.prior)>j) and (self.prior[j] is not None):
+                    lp,dprior[i],ddprior[i,i] = self.prior[j](theta[i],**self.prior_param[j])
                     logprior += lp
         return logprior,dprior,ddprior
 

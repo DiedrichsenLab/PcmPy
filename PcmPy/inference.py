@@ -273,32 +273,30 @@ def posterior_group(theta, M, YY, Z, X=None,
     """
     n_subj = len(YY)
     n_param = theta.shape[0]
-    ths,indx=group_to_individ_param(theta,M,n_subj)
-
-
+    ths,indx,gindx=group_to_individ_param(theta,M,n_subj,return_group_indices=True)
     nllik = likelihood_group(theta, M, YY, Z, X,Noise,n_channel,fit_scale,scale_prior,return_deriv)
     nllik = np.array(nllik,dtype=object)
-    model_params = theta[range(M.n_param)]
-    prior, dprior, ddprior = M.get_prior(model_params)
+    prior, dprior, ddprior = M.get_prior(theta,param_type=gindx)
     nllik[0] -= prior # Add prior
     if return_deriv>0:
-        nllik[1][0:M.n_param] -= dprior
+        nllik[1] -= dprior
     if return_deriv>1:
-        nllik[2][0:M.n_param, 0:M.n_param] -= ddprior
+        nllik[2] -= ddprior
     return nllik
 
 
-def group_to_individ_param(theta,M,n_subj):
+def group_to_individ_param(theta,M,n_subj,return_group_indices=False):
     """ Takes a vector of group parameters and rearranges them
     To make it conform to theta you would get back from a individual fit
 
     Args:
-        theta (nd.array): Vector of group parameters
+        theta (nd.array): n_gparam Vector of group parameters
         M (pcm.Model): PCM model
         n_subj (int): Number of subjects
     Returns:
-        theta_indiv (ndarray): n_params x n_subj Matrix of group parameters
-        indx (ndarray): n_params x n_subj Matrix of indices into original parameters
+        theta_indiv (ndarray): n_params x n_subj Matrix of individual parameters
+        indx_indiv (ndarray): n_params x n_subj Matrix of indices into group parameters
+        indx_group (ndarray): n_gparam Vector of indices into original model parameters
     """
     if hasattr(M,'common_param'):
         common = np.array(M.common_param)
@@ -319,7 +317,13 @@ def group_to_individ_param(theta,M,n_subj):
     # Signal and noise parameters
     indx[M.n_param:,:]=pindx[(M.n_param-n_common):,:]
     theta_indiv= theta[indx]
-    return theta_indiv,indx
+    if return_group_indices:
+        group_indx = np.zeros((n_gparam,),int)
+        for i in range(n_gparam):
+            group_indx[i]=np.where(indx==i)[0][0]
+        return theta_indiv,indx,group_indx
+    else:
+        return theta_indiv,indx
 
 def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
                     scale_prior = 1e3, noise_cov=None, algorithm=None,
@@ -372,7 +376,7 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
             n_param x n_subj np.array
 
         Hessian (list of np.arrays):
-            If return_second_deriv is true, then the it returns a 
+            If return_second_deriv is true, then the it returns a
             (nsubj,n_params,n_params) ndarray for each model
     """
 
@@ -521,7 +525,7 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
             #num_commonparams + #num_singleparams x #numSubj elements
 
         Hessian (list of np.arrays):
-            If return_second_deriv is true, then the it returns a 
+            If return_second_deriv is true, then the it returns a
             (n_params,n_params) ndarray for each model
     """
 
@@ -931,8 +935,8 @@ def sample_model_group(Data, M,
     fcn = lambda x: posterior_group(x, M, YY, Z, X=X,
             Noise = Noise, fit_scale = fit_scale, scale_prior=scale_prior, return_deriv = 0,n_channel=n_channel)
     proposal_sd = 1/np.sqrt(np.diag(dLL[0]))
-    proposal_sd[proposal_sd>5]=5
-    proposal_sd[proposal_sd<0.001]=0.001
+    # proposal_sd[proposal_sd>5]=5
+    # proposal_sd[proposal_sd<0.001]=0.001
 
     theta, l  = mcmc(th0, fcn,
                      n_samples = n_mcmc_samples,

@@ -88,12 +88,37 @@ def sim_correlation_sample(n_items=1,
     plt.plot(corr_list,prop_list/(corr_list[1]-corr_list[0]),'r')
     return T,theta,Mflex,th,l
 
+def ll_gaussian(theta,prec,return_deriv=0): 
+    lloglik = -0.5 * theta.T@ prec @ theta  # Nultivariate Gaussian prior
+    if return_deriv==0:
+        return (-lloglik,)
+    dloglik = - prec @ theta 
+    if return_deriv==1:
+        return (-lloglik, -dloglik)
+    ddloglik = -prec
+    return (-lloglik, -dloglik, -ddloglik)
+
+def test_mcmc_gaussian(n_dim=4):
+    """ Test the MCMC sampling with a Gaussian prior
+    """
+    prec = np.eye(n_dim)*0.1
+    proposal_sd = 1./np.sqrt(np.diag(prec))
+    theta0 = np.zeros((n_dim,))
+    fcn = lambda x: ll_gaussian(x,prec,return_deriv=0)
+    th,l=pcm.mcmc(theta0,fcn,proposal_sd=proposal_sd,n_samples=10000)
+    pass 
+
+
+
+
+
 
 if __name__ == '__main__':
+    test_mcmc_gaussian(n_dim=20)
     # np.seterr(all='raise')
     # np.seterr(over='ignore')
     # a=np.array([1e50,1e100,3,4])
     # b=np.exp(a)
-    sim_correlation_sample()
+
     pass
 

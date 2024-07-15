@@ -58,7 +58,7 @@ class Model:
             ddprior (np.array): second derivative of log-prior probability in respect to theta
         """
         if param_type is None:
-            param_type = np.arrange((self.n_param,))
+            param_type = np.arange(self.n_param)
         n_param = len(param_type)
         logprior = 0
         dprior = np.zeros((n_param,))

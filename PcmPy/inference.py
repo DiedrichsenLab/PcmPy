@@ -387,6 +387,10 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
         n_subj = 1
         Data = [Data]
 
+    # Make sure fixed effects are subject specific
+    if type(fixed_effect) is not list:
+        fixed_effect = [fixed_effect] * n_subj
+
     # Get the number of models
     if type(M) in [list,pcm.model.ModelFamily]:
         n_model = len(M)
@@ -419,7 +423,7 @@ def fit_model_individ(Data, M, fixed_effect='block', fit_scale=False,
     # Loop over subject and models and provide inidivdual fits
     for s in range(n_subj):
         Z,X,YY,n_channel,Noise,G_hat = set_up_fit(Data[s],
-                                                fixed_effect = fixed_effect,
+                                                fixed_effect = fixed_effect[s],
                                                 noise_cov = noise_cov)
         for i,m in enumerate(M):
             if verbose:
@@ -580,6 +584,16 @@ def fit_model_group(Data, M, fixed_effect='block', fit_scale=False,
         # Use externally provided theta, if provided
         if (theta0 is not None) and (len(theta0) >= i-1):
             th0 = theta0[i]
+            cp=m.common_param.sum()
+            ncp=m.n_param-cp
+            ind =cp+ncp
+            for s in range(n_subj):
+                indx_noise[s] = ind
+                ind=ind+1
+                if (fit_scale):
+                    indx_scale[s] = ind
+                    ind=ind+ncp+1
+            pass
         else:
             # Get starting guess for theta0 is not provided
             th_gr = m.get_theta0(G_avrg) # Group theta
@@ -988,11 +1002,13 @@ def set_up_fit(Data, fixed_effect = 'block', noise_cov = None):
     part_vec = Data.obs_descriptors['part_vec']
     if fixed_effect is None:
         X = None
+    elif isinstance(fixed_effect, np.ndarray):
+        X = fixed_effect
     elif fixed_effect=='block':
         X = pcm.matrix.indicator(part_vec)
     else:
-        X = fixed_effect
-
+        error('Unknown fixed effect')
+        
     # Now choose the noise model
     if noise_cov is None:
         Noise = IndependentNoise()

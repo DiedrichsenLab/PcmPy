@@ -2,6 +2,7 @@ from typing import Any
 import numpy as np
 from numpy import exp, eye, log, sqrt
 from numpy.linalg import solve, eigh, cholesky, pinv
+from scipy.linalg import block_diag
 import PcmPy as pcm
 import pandas as pd
 import warnings
@@ -98,6 +99,12 @@ class FeatureModel(Model):
         """
 
         Model.__init__(self,name)
+        if type(Ac) is list:
+            num_comp= len(Ac)
+            N = Ac[0].shape[0]
+            Ac = block_diag(*Ac)
+            K = Ac.shape[1]
+            Ac = Ac.reshape((N,K,num_comp))
         if (Ac.ndim <3):
             Ac = Ac.reshape((1,)+Ac.shape)
         self.Ac = Ac

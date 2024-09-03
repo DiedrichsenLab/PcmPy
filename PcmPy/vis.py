@@ -69,6 +69,7 @@ def model_plot(likelihood,null_model=0,noise_ceiling=None,upper_ceiling=None):
 def plot_tree(model_family,data,
             show_edges=True,
             show_labels=False,
+            show_value=False,
             edge_color='diff_comp',
             edge_width=1,
             comp_colormap='tab20',
@@ -132,8 +133,10 @@ def plot_tree(model_family,data,
     # Add labels to models
     if show_labels:
         for i in range(x.shape[0]):
-            plt.text(x[i], y[i], model_family[i].name,
-                zorder = 40)
+            lstr = model_family.model_names[i]
+            if show_value:
+                lstr = lstr + f':{data[i]:.2f}'
+            plt.text(x[i], y[i]+model_size+0.06,lstr,zorder = 40)
 
 def plot_component(data,type='posterior'):
     """Plots the result of a component analysis
@@ -167,4 +170,3 @@ def plot_Gs(G,grid = None, labels=None):
         plt.imshow(G[i])
         plt.xticks([])
         plt.yticks([])
-    

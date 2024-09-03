@@ -102,9 +102,9 @@ class FeatureModel(Model):
         if type(Ac) is list:
             num_comp= len(Ac)
             N = Ac[0].shape[0]
-            Ac = block_diag(*Ac)
-            K = Ac.shape[1]
-            Ac = Ac.reshape((N,K,num_comp))
+            A = block_diag(*Ac)
+            K = A.shape[1]
+            Ac = A.reshape((num_comp,N,K))
         if (Ac.ndim <3):
             Ac = Ac.reshape((1,)+Ac.shape)
         self.Ac = Ac

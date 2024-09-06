@@ -159,7 +159,7 @@ def plot_component(data,type='posterior'):
     ax.set_xlabel('Component')
 
 
-def plot_Gs(G,grid = None, labels=None):
+def plot_Gs(G,grid = None, labels=None,titles=None):
     numG,n_cond,n_cond = G.shape
     if grid is None:
         a = int(np.ceil(np.sqrt(numG)))
@@ -170,3 +170,5 @@ def plot_Gs(G,grid = None, labels=None):
         plt.imshow(G[i])
         plt.xticks([])
         plt.yticks([])
+        if titles is not None:
+            plt.title(titles[i])

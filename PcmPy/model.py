@@ -544,6 +544,86 @@ class IndependentNoise(NoiseModel):
             raise(NameError("Too many model factors to estimate noise variance. Consider removing terms or setting runEffect to 'none'"))
         return np.array([log(noise0)])
 
+class HeteroscedasticNoise(NoiseModel):
+    """
+    Heteroscedastic, but independent, noise model
+    the K parameters is the noise variance of different observartions
+    """
+    def __init__(self,noise_group):
+        NoiseModel.__init__(self)
+        a,self.noise_group = np.unique(noise_group,return_inverse=True)
+        self.n_param = len(a)
+
+    def predict(self, theta):
+        """
+        Prediction function returns S - predicted noise covariance matrix
+
+        Args:
+            theta ([np.array]): Array like of noiseparamters
+
+        Returns:
+            s (double)
+                Noise variance (for simplicity as a scalar)
+        """
+        return np.diag(np.exp(theta[self.noise_group]))
+
+    def inverse(self, theta):
+        """
+        Returns S^{-1}
+
+        Args:
+            theta ([np.array]): Array like of noiseparamters
+
+        Returns:
+            s (double)
+                Inverse of noise variance (scalar)
+        """
+        return np.diag(np.exp(-theta[self.noise_group]))
+
+    def derivative(self, theta, n=0):
+        """
+        Returns the derivative of S in respect to it's own parameters
+
+        Args:
+            theta ([np.array])
+                Array like of noiseparameters
+            n (int, optional)
+                Number of parameter to get derivate for. Defaults to 0.
+
+        Returns:
+            d (np-array)
+                derivative of S in respective to theta
+        """
+        return np.exp(theta[n])*np.diag(self.noise_group==n)
+
+    def get_theta0(self, Y, Z, X=None):
+        """Makes an initial guess on noise paramters
+
+        Args:
+            Y ([np.array])
+                Data
+            Z ([np.array])
+                Random Effects matrix
+            X ([np.array], optional)
+                Fixed effects matrix.
+        Returns:
+            theta0 (np.array)
+                Initial guess for noise parameters
+        """
+        theta0 = np.zeros((self.n_param,))
+        N, P = Y.shape
+        if X is not None:
+            Z = np.c_[Z, X]
+        RY = Y - Z @ pinv(Z) @ Y
+        for n in range(self.n_param):
+            i = self.noise_group == n
+            noise0 = np.sum(RY[i,:]*RY[i,:])/(P * (i.sum() - Z.shape[1]))
+            if noise0 <= 0:
+                raise(NameError("Too many model factors to estimate noise variance. Consider removing terms or setting runEffect to 'none'"))
+            theta0[n] = log(noise0)
+        return theta0
+
+
 class BlockPlusIndepNoise(NoiseModel):
     """
     This noise model uses correlated noise per partition (block)

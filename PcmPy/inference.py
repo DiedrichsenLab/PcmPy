@@ -1008,12 +1008,14 @@ def set_up_fit(Data, fixed_effect = 'block', noise_cov = None):
         X = pcm.matrix.indicator(part_vec)
     else:
         error('Unknown fixed effect')
-        
+
     # Now choose the noise model
     if noise_cov is None:
         Noise = IndependentNoise()
     elif noise_cov == 'block':
         Noise = BlockPlusIndepNoise(part_vec)
+    elif isinstance(noise_cov,pcm.NoiseModel):
+        Noise = noise_cov
     else:
         raise(NameError('Arbitrary covariance matrices are not yet implemented'))
 

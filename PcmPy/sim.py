@@ -110,7 +110,7 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
 
     # If noise_cov_trial is given, precalculate the cholinsky decomp
     if (noise_cov_trial is not None):
-        if (noise_cov_trial.shape != (n_channel, n_channel)):
+        if (noise_cov_trial.shape != (n_obs, n_obs)):
             raise(NameError("noise covariance for trials needs to be \
                              n_obs x n_obs array"))
         noise_chol_trial = np.linalg.cholesky(noise_cov_trial)

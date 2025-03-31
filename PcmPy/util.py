@@ -133,7 +133,7 @@ def classical_mds(G,contrast=None,align=None,thres=0):
 
     Args:
         G (ndarray): KxK second moment matrix
-        contrast (ndarray): Contrast matrix to optimize for. Defaults to None.
+        contrast (ndarray): QxK Contrast matrix to optimize for. Defaults to None.
         align (ndarry): A different loading matrix to which to align
         thres (float): Cut off eigenvalues under a certain value
     Returns:
@@ -149,6 +149,16 @@ def classical_mds(G,contrast=None,align=None,thres=0):
     Glam[Glam<thres]=0
     W = V * np.sqrt(Glam)
 
+    # If contrast is given, find the projection that maximizes the variance
+    # if contrast is not None: 
+    #     H = contrast*pinv(contrast);  # Projection matrix 
+    #     [V,L]=eigh(conj(Y)H'*H*Y); 
+    # [l,i]   = sort(real(diag(L)),1,'descend');           % Sort the eigenvalues
+    # V       = V(:,i); 
+    # Y       = Y*V; 
+    # else 
+    # end; 
+    
     # When aligning - use the center and scale of the target
     # As the standard for both
     if align is not None:

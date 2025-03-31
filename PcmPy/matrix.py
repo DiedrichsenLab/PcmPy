@@ -17,7 +17,7 @@ def indicator(index_vector, positive=False):
         index_vector (numpy.ndarray)
             n_row vector to code - discrete values (one dimensional)
         positive (bool)
-            should the function ignore zero negative entries
+            should the function ignore zero and negative entries
             in the index_vector? Default: false
 
     Returns:
@@ -26,30 +26,33 @@ def indicator(index_vector, positive=False):
 
     """
     c_unique = np.unique(index_vector)
-    n_unique = c_unique.size
     rows = np.size(index_vector)
     if positive:
         c_unique = c_unique[c_unique > 0]
-        n_unique = c_unique.size
+    n_unique = c_unique.size
     indicator_matrix = np.zeros((rows, n_unique))
     for i in np.arange(n_unique):
         indicator_matrix[index_vector == c_unique[i], i] = 1
     return indicator_matrix
 
-def pairwise_contrast(index_vector):
+def pairwise_contrast(index_vector,positive=False):
     """ Contrast matrix with one row per unqiue pairwise contrast
 
     Parameters:
         index_vector (numpy.ndarray):
             n_row vector to code discrete values (one dimensional)
-
+        positive (bool):
+            Only consider conditions with index_vector>0
     Returns:
         contrast matrix (numpy.ndarray):
             n_values * (n_values-1)/2 x n_row
 
     """
     c_unique = np.unique(index_vector)
+    if positive:
+        c_unique = c_unique[c_unique > 0]
     n_unique = c_unique.size
+
     rows = np.size(index_vector)
     indicator_matrix = np.zeros((
         int(n_unique * (n_unique - 1) / 2), rows))

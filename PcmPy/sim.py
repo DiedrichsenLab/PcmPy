@@ -52,7 +52,7 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
         n_sim (int):
             Number of simulation with the same signal (default = 1)
         signal (float):
-            Signal variance (multiplied by predicted G)
+            Signal variance (multiplied by predicted G) - can be scalar or vector with n_sim length
         signal_cov_channel(numpy.ndarray):
             Covariance matrix of signal across channels
         noise (float):
@@ -129,6 +129,12 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
            "model": model.name, "theta": theta}
     dataset_list = []
     for i in range(0, n_sim):
+        if (len(signal)==1):
+            sig = signal
+        elif (len(signal) == n_sim):
+            sig = signal[i]
+        else:
+            raise(NameError("Signal needs to be either scalar or vector with n_sim length"))
         # If necessary - make a new signal
         if (use_same_signal == False):
             true_U = make_signal(G, n_channel, use_exact_signal, signal_chol_channel,rng=rng)
@@ -141,7 +147,7 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
         if (noise_chol_trial is not None):
             epsilon = noise_chol_trial @ epsilon
         # Assemble the data set
-        data = Zcond @ true_U * np.sqrt(signal) + epsilon
+        data = Zcond @ true_U * np.sqrt(sig) + epsilon
         datas = dataset.Dataset(data, obs_descriptors=obs_des, descriptors=des)
         dataset_list.append(datas)
     return dataset_list

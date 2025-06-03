@@ -730,6 +730,10 @@ class ModelFamily:
             self.num_comp = components.Gc.shape[0]
             self.Gc = components.Gc
             self.comp_names = comp_names
+        if type(components) is FeatureModel:
+            self.num_comp = components.Ac.shape[0]
+            self.Ac = components.Ac
+            self.comp_names = comp_names
         elif type(components) is np.ndarray:
             if components.ndim != 3:
                 raise(NameError('ndarray input needs to have 3 dimensions (num_comp x N x N'))
@@ -758,8 +762,14 @@ class ModelFamily:
             elif type(basecomponents) is np.ndarray:
                 if basecomponents.ndim != 3:
                     raise(NameError('ndarray input needs to have 3 dimensions (num_basecomp x N x N'))
-                self.num_basecomp = basecomponents.shape[0]
-                self.Gc = np.r_[self.Gc,basecomponents]
+                if type(components) is FeatureModel:
+                    # if we are making the family from a FeatureModel
+                    # we can't concatenate the basecomps to a Gc
+                    # because we defined self.Ac instead
+                    self.num_basecomp = basecomponents.shape[0]
+                else:
+                    self.num_basecomp = basecomponents.shape[0]
+                    self.Gc = np.r_[self.Gc,basecomponents]
             elif type(basecomponents) is list:
                 self.num_basecomp = len(basecomponents)
                 for i,m in enumerate(basecomponents):
@@ -801,12 +811,18 @@ class ModelFamily:
             if ind.sum()==self.num_basecomp:
                 name = 'base'
                 if self.num_basecomp==0:
-                    mod = FixedModel(name,np.zeros(self.Gc[0].shape))
+                    if type(components) is FeatureModel:
+                        mod = FixedModel(name,np.zeros((self.Ac[0].shape[0], self.Ac[0].shape[0])))
+                    else:
+                        mod = FixedModel(name,np.zeros(self.Gc[0].shape))
                 else:
                     mod = ComponentModel(name,self.Gc[ind,:,:])
             else:
                 name = '+'.join(self.comp_names[self.combinations[m]>0])
-                mod = ComponentModel(name,self.Gc[ind,:,:])
+                if type(components) is FeatureModel:
+                    mod = FeatureModel(name, self.Ac[ind,:,:])
+                else:
+                    mod = ComponentModel(name, self.Gc[ind, :, :])
             self.model_names.append(name)
             self.models.append(mod)
 
@@ -958,7 +974,8 @@ class ModelFamily:
         c_bf = np.empty((mposterior.shape[0],self.num_comp))
 
         for i in range(self.num_comp):
-            c_bf[:,i] = np.log(mposterior[:,self.combinations[:,i]==1].sum(axis=1))-np.log(mposterior[:,self.combinations[:,i]==0].sum(axis=1))
+            c_bf[:,i] = (np.log(mposterior[:,self.combinations[:,i]==1].sum(axis=1) + 1e-18)
+                         - np.log(mposterior[:,self.combinations[:,i]==0].sum(axis=1) + 1e-18))
 
         if format == 'DataFrame':
             return pd.DataFrame(data=c_bf,

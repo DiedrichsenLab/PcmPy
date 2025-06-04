@@ -32,7 +32,7 @@ You can also clone or fork the whole repository from https://github.com/diedrich
 
 You then should be able to import the entire toolbox as::
 
-    import PCMPy as pcm
+    import PcmPy as pcm
 
 
 

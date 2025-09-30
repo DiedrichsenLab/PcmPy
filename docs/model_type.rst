@@ -44,7 +44,7 @@ For fast optimization of the likelihood, we require the derivate of the second m
 Example
 ^^^^^^^
 
-In the example :ref:`Finger demo<examples>`, we have two fixed models, the Muscle and the natural statistics model. One question that arises in the paper is whether the real observed structure is better fit my a linear combination of the natural statistics and the muscle activity structure. So we can define a third model, which allows any arbitrary mixture between the two type.
+In the example :ref:`Component model <examples>`, we have two fixed models, the Muscle and the natural statistics model. One question that arises in the paper is whether the real observed structure is better fit my a linear combination of the natural statistics and the muscle activity structure. So we can define a third model, which allows any arbitrary mixture between the two type.
 
 .. sourcecode:: python
 
@@ -75,39 +75,30 @@ By the product rule for matrix derivatives, we have
 Correlation model
 -----------------
 
-The correlation model class is designed model correlation between specific sets of activity patterns. This problem often occurs in neuroimaging studies: For example, we may have  5 actions that are measured under two conditions (for example observation and execution), and we want to know to what degree the activtiy patterns of obseving an action related to the pattern observed when executing the same action.
+The correlation model class is designed model correlation between specific sets of activity patterns. This problem often occurs in neuroimaging studies: For example, we may have  3 actions that are measured under two conditions (for example observation and execution), and we want to know to what degree the activity patterns of observing an action related to the pattern observed when executing the same action.
 
-**Fixed correlation models**: We can use a series of models that test the likelihood of the data under a fixed correlations between -1 and 1. This approach allows us to determine how much evidence we have for one specific correlation over the other. Even though the correlation is fixed for these models, the variance structure within each of the conditions is flexibly estimated. This is done using a compent model within each condition.
+To estimate the maximum-likelihood estimate of the correlation, we need to estimate the variance of the activity patterns within each condition (which is positive), as well as the correlation (which is between -1 and 1). We are therefore using the following nonlinear transforms to ensure that the parameters are unconstrained:
 
 .. math::
-    \mathbf{G}^{(1)} = \sum_{h}{\exp(\theta^{(1)}_{h})\mathbf{G}_{h}}\\
-    \mathbf{G}^{(2)} = \sum_{h}{\exp(\theta^{(2)}_{h})\mathbf{G}_{h}}\\
+    \sigma^2_x = exp(\theta_x)\\
+    \sigma^2_y = exp(\theta_y)\\
+    \r = (exp(2*\theta_z)-1)/(exp(2*\theta_z)+1) 
 
-Usually the $mathbf{G}_{h}$ is the identity matrix (all items are equally strongly represented, or a matrix that allows individual scaling of the variances for each item. Of course you can also model any between-item covariance.
-The overall model is nonlinear, as the two components interact in the part of the **G** matrix that indicates the covariance between the patterns of the two conditions (**C**). Given a constant correlation *r*, the overall second moment matrix is calculated as:
+THe overall second moment matrix is then given by: 
 
 .. math::
     \mathbf{G}= \begin{bmatrix}
-    \mathbf{G}^{(1)} & r\mathbf{C} \\
-    r\mathbf{C}^T & \mathbf{G}^{(2)}
+    \sigma^2_x & r \sigma_x \sigma_y \\
+    r \sigma_x \sigma_y & \sigma^2_y
     \end{bmatrix}\\
-    \mathbf{C}_{i,j} = \sqrt{\mathbf{G}^{(1)}_{i,j}\mathbf{G}^{(2)}_{i,j}}
 
-If the parameter `within_cov` is set to true, the model will also add with-condition covariance, which are not part of covariance. So the correlation that we modelling is the correlation between the pattern component related to the individual items, after the pattern component related to the overall condition (ie. observe vs. execute) has been removed.
+If you have more than one item in each condition, the model will assume that the items within condition have independent activity patterns. If this is not the case, then you can also provide a item x item matrix as the argument  `within_cov` as . For multiple items we usually want to ignore any overall differences between the conditions, so `cond_effect` needs to be set to be `True`. 
 
-The derivatives of that part of the matrix in respect to the parameters :math:`\theta^{(1)}_{h}` then becomes
-
-.. math::
-    \frac{{\partial {\mathbf{C}_{i,j}}}}{{\partial {\theta^{(1)}_h}}} =
-    \frac{r}{2 \mathbf{C}_{i,j}} \mathbf{G}^{(2)}_{i,j} \frac{{\partial {\mathbf{G}^{(1)}_{i,j}}}}{{\partial {\theta^{(1)}_h}}}
-
-These derivatives are automatically calculated in the predict function. From the log-likelihoods for each model, we can then obtain an approximation for the posterior distribution.
-
-**Flexible correlation model**: We also use a flexible correlation model, which has an additional model parameter for the correlation. To avoid bounds on the correlation, this parameter is the inverse Fisher-z transformation of the correlation, which can take values of :math:`[-\infty,\infty]`.
+The derivatives are automatically calculated in the predict function. Specfically, the derivative of the correlation parameters is easy to obtain:
 
 .. math::
-    \theta=\frac{1}{2}log\left(\frac{1+\theta}{1-\theta}\right)\\
     r=\frac{exp(2\theta)-1}{exp(2\theta)+1}\\
+    \theta=\frac{1}{2}log\left(\frac{1+\theta}{1-\theta}\right)\\
 
 The derivative of :math:`r` in respect to :math:`\theta` can be derived using the product rule:
 
@@ -118,8 +109,9 @@ The derivative of :math:`r` in respect to :math:`\theta` can be derived using th
 
 Example
 ^^^^^^^
-For a full example, please see the :ref:`Correlation models`.
+For a full example, please see the :ref:`Correlation model <example>`.
 
+:doc:`../docs/demos/demo_correlation.ipynb`
 
 Free models
 -----------

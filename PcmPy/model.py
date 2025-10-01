@@ -215,7 +215,7 @@ class CorrelationModel(Model):
             name (string):
                 name of the particular model for indentification
             within_cov (numpy.ndarray or None):
-                how to model within condition cov-ariance between items
+                how to model within condition cov-variance between items
             num_items (int):
                 Number of items within each condition
         """

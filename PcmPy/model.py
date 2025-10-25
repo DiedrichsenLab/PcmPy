@@ -974,8 +974,7 @@ class ModelFamily:
         c_bf = np.empty((mposterior.shape[0],self.num_comp))
 
         for i in range(self.num_comp):
-            c_bf[:,i] = (np.log(mposterior[:,self.combinations[:,i]==1].sum(axis=1) + 1e-18)
-                         - np.log(mposterior[:,self.combinations[:,i]==0].sum(axis=1) + 1e-18))
+            c_bf[:,i] = np.log(mposterior[:,self.combinations[:,i]==1].sum(axis=1)) - np.log(mposterior[:,self.combinations[:,i]==0].sum(axis=1))
 
         if format == 'DataFrame':
             return pd.DataFrame(data=c_bf,

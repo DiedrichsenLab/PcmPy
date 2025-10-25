@@ -17,7 +17,8 @@ import pandas as pd
 
 
 
-def model_plot(likelihood,null_model=0,noise_ceiling=None,upper_ceiling=None):
+def model_plot(likelihood,null_model=0,noise_ceiling=None,upper_ceiling=None, width=.8, palette=None, errorbar='ci',
+               err_kws=None, plottype='bar', noise_ceil_col=[0.5, 0.5, 0.5, 0.2], linewidth=1):
     """
     Make model comparision plot
 
@@ -36,8 +37,6 @@ def model_plot(likelihood,null_model=0,noise_ceiling=None,upper_ceiling=None):
 
     """
 
-    noise_ceil_col = [0.5, 0.5, 0.5, 0.2]
-
     m_names = likelihood.columns.values
     if type(null_model) != str:
         null_model = m_names[null_model]
@@ -52,16 +51,21 @@ def model_plot(likelihood,null_model=0,noise_ceiling=None,upper_ceiling=None):
     # Stretch out the data frame
     LL=pd.melt(likelihood)
     indx = np.logical_and(LL.model !=null_model, LL.model !=noise_ceiling)
-    ax = sb.barplot(x=LL.model[indx], y=LL.value[indx])
+    if plottype=='bar':
+        ax = sb.barplot(x=LL.model[indx], y=LL.value[indx], width=width, palette=palette, errorbar=errorbar, err_kws=err_kws)
+    elif plottype=='box':
+        ax = sb.boxplot(x=LL.model[indx], y=LL.value[indx], width=width, linewidth=linewidth, palette=palette, showfliers=False)
     xlim = ax.get_xlim()
     if noise_ceiling is not None:
         noise_lower = np.nanmean(likelihood[noise_ceiling])
         if upper_ceiling is not None:
             noise_upper = np.nanmean(upper_ceiling-baseline)
-            noiserect = patches.Rectangle((xlim[0], noise_lower), xlim[1]-xlim[0], noise_upper-noise_lower, linewidth=0, facecolor=noise_ceil_col, zorder=1e6)
+            assert noise_upper > noise_lower
+            noiserect = patches.Rectangle((xlim[0], noise_lower), xlim[1]-xlim[0], noise_upper-noise_lower,
+                                          linewidth=0, facecolor=noise_ceil_col, zorder=1e6, transform=ax.transData)
             ax.add_patch(noiserect)
         else:
-            l = mlines.Line2D([xlim[0], xlim[1]], [noise_lower, noise_lower],color=[0,0,0], linestyle=':')
+            l = mlines.Line2D([xlim[0], xlim[1]], [noise_lower, noise_lower],color=noise_ceil_col, linestyle=':')
             ax.add_line(l)
     ax.set_ylabel('Log Bayes Factor')
     return ax
@@ -94,7 +98,7 @@ def plot_tree(model_family,data,
 
     # generate axis with appropriate labels
     ax = plt.gca()
-    ax.set_aspect('equal')
+    # ax.set_aspect('equal')
     ax.set_xlim(np.min(x)-1,np.max(x)+1)
     ax.set_ylim(np.min(y)-1,np.max(y)+1)
     ax.get_xaxis().set_visible(False)
@@ -138,7 +142,7 @@ def plot_tree(model_family,data,
                 lstr = lstr + f':{data[i]:.2f}'
             plt.text(x[i], y[i]+model_size+0.06,lstr,zorder = 40)
 
-def plot_component(data,type='posterior'):
+def plot_component(data,type='posterior',palette=None,errorbar='ci', width=.8):
     """Plots the result of a component analysis
     Args:
         data (_type_): _description_
@@ -146,17 +150,20 @@ def plot_component(data,type='posterior'):
     """
     D = data.melt()
     ax = plt.gca()
-    sb.barplot(data=D,x='variable',y='value')
+    bars = sb.barplot(data=D,x='variable',y='value',palette=palette,errorbar=errorbar, width=width)
+    # bars = sb.boxplot(data=D, x='variable', y='value', palette=palette, showfliers=False)
     if (type=='posterior'):
         ax.set_ylabel('Posterior')
         plt.axhline(1/(1+np.exp(1)),color='k',ls=':')
         plt.axhline(0.5,color='k',ls='--')
     elif(type=='bf'):
         ax.set_ylabel('Bayes Factor')
-        plt.axhline(0,color='k',ls='--')
+        # plt.axhline(0,color='k',ls='--')
     elif(type=='varestimate'):
         ax.set_ylabel('Variance Estimate')
     ax.set_xlabel('Component')
+
+    return bars
 
 
 def plot_Gs(G,grid = None, labels=None,titles=None):

@@ -129,7 +129,7 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
            "model": model.name, "theta": theta}
     dataset_list = []
     for i in range(0, n_sim):
-        if (len(signal)==1):
+        if (np.isscalar(signal)):
             sig = signal
         elif (len(signal) == n_sim):
             sig = signal[i]

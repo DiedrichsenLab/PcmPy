@@ -120,7 +120,7 @@ def fit_CKA_individ(Data, M, fixed_effect='block', theta0=None, verbose = True):
             # Get starting guess for theta0 is not provided
             if (theta0 is None) or (len(theta0) <= i) or (theta0[i].shape[1]<s):
                 th0  = m.get_theta0(G_est)
-                th0 = np.ones(th0.shape)  # use ones as starting guess
+                # th0 = np.ones(th0.shape)  # use ones as starting guess
             else:
                 th0 = theta0[i][:,s]
 

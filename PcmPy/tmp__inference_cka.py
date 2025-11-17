@@ -108,7 +108,7 @@ def fit_CKA_individ(Data, M, fixed_effect='block', theta0=None, verbose = True):
     # Loop over subject and models and provide inidivdual fits
     for s in range(n_subj):
         # Get the cross-validated data G matrix:
-        G_est =  pcm.est_G_crossval(Data[s].measurements,
+        G_est,_ =  pcm.est_G_crossval(Data[s].measurements,
                                     Data[s].obs_descriptors['cond_vec'],
                                     Data[s].obs_descriptors['part_vec'],
                                     X=pcm.matrix.indicator(Data[s].obs_descriptors['part_vec']))
@@ -120,6 +120,7 @@ def fit_CKA_individ(Data, M, fixed_effect='block', theta0=None, verbose = True):
             # Get starting guess for theta0 is not provided
             if (theta0 is None) or (len(theta0) <= i) or (theta0[i].shape[1]<s):
                 th0  = m.get_theta0(G_est)
+                th0 = np.ones(th0.shape)  # use ones as starting guess
             else:
                 th0 = theta0[i][:,s]
 
@@ -141,5 +142,5 @@ def fit_CKA_individ(Data, M, fixed_effect='block', theta0=None, verbose = True):
                 theta[i] = np.zeros((theta_hat.shape[0],n_subj))
             theta[i][:,s] = theta_hat
 
-    return T,theta
+    return T, theta
 

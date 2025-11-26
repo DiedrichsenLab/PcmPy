@@ -193,3 +193,29 @@ def check_grad(fcn,theta0,delta=0.0001):
         print(dx[i])
         print('Error:',((est_grad-dx[i])**2).sum())
 
+def CKA(G1, G2):
+    '''
+    Simple util function to Compute CKA (cosine similarity) between two matrices
+
+    Returns:
+        CKA (double):
+            CKA (cosine similarity) between the two matrices
+
+    '''
+
+    N = G1.shape[0]
+    # Q = Z.shape[1]
+
+    # Center the matrices:
+    H = np.eye(N) - np.ones((N, N)) / N
+    G1_centered = H @ G1 @ H
+    G2_centered = H @ G2 @ H
+
+    # column-vectorize the centered matrices:
+    a = G1_centered.flatten()
+    b = G2_centered.flatten()
+    # perform CKA:
+    epsilon = 1e-10
+    cka = (a.T @ b) / (np.linalg.norm(a) * np.linalg.norm(b) + epsilon)
+
+    return cka

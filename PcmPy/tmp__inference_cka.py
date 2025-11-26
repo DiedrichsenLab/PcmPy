@@ -1,8 +1,9 @@
 import numpy as np
-from numpy import sum, diag, log, eye, exp, trace, einsum
+from numpy import ceil, sum, diag, log, eye, exp, trace, einsum
 import PcmPy as pcm
 import pandas as pd
 import scipy.optimize as opt
+
 
 def _CKA_individ(theta, M, G_est): # return deriv 1 for 
     '''
@@ -57,7 +58,6 @@ def _CKA_individ(theta, M, G_est): # return deriv 1 for
     # ==============================================================
     # if return_deriv == 2:
     #     raise NotImplementedError("Second derivative of CKA not implemented yet.")
-
 
 def fit_CKA_individ(Data, M, fixed_effect='block', theta0=None, verbose = True):
     '''
@@ -145,9 +145,9 @@ def fit_CKA_individ(Data, M, fixed_effect='block', theta0=None, verbose = True):
 
     return T, theta
 
-def fit_CKA_group_crossval(Data, M, theta0, fixed_effect='block', verbose=True):
+def fit_CKA_group_crossval(Data, M, theta0, fixed_effect='block', verbose=True, ceil=False):
     """
-    Description...
+    Description
 
     Parameters:
 
@@ -197,7 +197,7 @@ def fit_CKA_group_crossval(Data, M, theta0, fixed_effect='block', verbose=True):
     # Loop over subject and models and provide inidivdual fits
     for s in range(n_subj):
         notS = np.arange(n_subj) != s # Get indices of training group
-        
+
         # Get the cross-validated data G matrix:
         G_loo = np.mean(G_est[notS,:,:], axis=0)
         G_ind = G_est[s,:,:]
@@ -224,28 +224,29 @@ def fit_CKA_group_crossval(Data, M, theta0, fixed_effect='block', verbose=True):
             
             # get CKA on left-out subject:
             cka_ind,_ = _CKA_individ(theta_hat, m, G_ind) # remember the function returns -CKA
-            T['CKA_fit',m_names[i]][s] = -res.fun
-            T['CKA',m_names[i]][s] = -cka_ind 
-            T['iterations',m_names[i]][s] = res.nit
+            T.loc[s, ('CKA_fit',m_names[i])] = -res.fun
+            T.loc[s, ('CKA',m_names[i])] = -cka_ind 
+            T.loc[s, ('iterations',m_names[i])] = res.nit
 
             # Record theta parameters
             if theta[i] is None:
                 theta[i] = np.zeros((theta_hat.shape[0],n_subj))
             theta[i][:,s] = theta_hat
     
-    # # estimate noise ceiling:
-    # ceil_high = np.zeros((n_subj,))
-    # ceil_low = np.zeros((n_subj,))
-    # G_est_avg = np.mean(G_est, axis=0)
-    # for s in range(n_subj):
-    #     # high ceiling:
-    #     ceil_high_tmp,_ = _CKA_individ(theta_hat, m, G_est_avg)
-    #     ceil_high[s] = -ceil_high_tmp
+    if not ceil:
+        return T, theta
 
-    #     # low ceiling:
-    #     notS = np.arange(n_subj) != s # Get indices of training group
-    #     G_loo = np.mean(G_est[notS,:,:], axis=0)
-    #     ceil_low_tmp,_ = _CKA_individ(theta_hat, m, G_loo)
-    #     ceil_low[s] = -ceil_low_tmp
+    # estimate noise ceiling:
+    ceil_high = np.zeros((n_subj,))
+    ceil_low = np.zeros((n_subj,))
+    G_est_avg = np.mean(G_est, axis=0)
+    for s in range(n_subj):
+        # high ceiling:
+        ceil_high[s] = pcm.util.CKA(G_est_avg, G_est[s,:,:])
 
-    return T, theta
+        # low ceiling:
+        notS = np.arange(n_subj) != s
+        G_loo = np.mean(G_est[notS,:,:], axis=0)
+        ceil_low[s] = pcm.util.CKA(G_loo, G_est[s,:,:])
+
+    return T, theta, {'ceil_high': ceil_high, 'ceil_low': ceil_low}

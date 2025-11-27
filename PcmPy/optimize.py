@@ -48,10 +48,10 @@ def newton(theta0, lossfcn, max_iter=80, thres= 1e-4, hess_reg=1e-4,
     if fit_param is None:
         fit_param = np.ones(theta0.shape,dtype=bool)
     # Initialize Interations
-    dF = np.Inf
+    dF = np.inf
     H = theta0.shape[0] # Number of parameters
     theta = theta0
-    dL = np.Inf
+    dL = np.inf
     thetaH = np.empty((theta.shape[0], max_iter))
     thetaH[:] = np.nan
     regH = np.empty((max_iter,)) * np.nan
@@ -98,7 +98,7 @@ def newton(theta0, lossfcn, max_iter=80, thres= 1e-4, hess_reg=1e-4,
             if (k==0):
                 raise(NameError('Bad starting values - failed likelihood'))
             else:
-                nl[k]=np.Inf
+                nl[k]=np.inf
         # Safety check if negative likelihood decreased
         if ((k>0 and (nl[k] - nl[k-1])>1e-16)) or np.isnan(nl[k]) or np.any(np.isnan(dFdh)) or np.any(np.isnan(dFdhh)):
             hess_reg = hess_reg * 10 # Increase regularisation
@@ -109,7 +109,7 @@ def newton(theta0, lossfcn, max_iter=80, thres= 1e-4, hess_reg=1e-4,
             nl[k] = nl[k-1]
             dFdh = dFdh_old
             dFdhh = dFdhh_old
-            dL = np.Inf # Definitely try again
+            dL = np.inf # Definitely try again
         else:
             if hess_reg > 1e-8:
                 hess_reg = hess_reg / 10 # Decrease regularization

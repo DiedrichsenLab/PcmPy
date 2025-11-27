@@ -145,7 +145,7 @@ def fit_CKA_individ(Data, M, fixed_effect='block', theta0=None, verbose = True):
 
     return T, theta
 
-def fit_CKA_group_crossval(Data, M, theta0, fixed_effect='block', verbose=True, ceil=False):
+def fit_CKA_group_crossval(Data, M, theta0=None, fixed_effect='block', verbose=True, ceil=False):
     """
     Description
 

@@ -129,7 +129,7 @@ def make_dataset(model, theta, cond_vec, n_channel=30, n_sim=1,
            "model": model.name, "theta": theta}
     dataset_list = []
     for i in range(0, n_sim):
-        if (len(signal)==1):
+        if (np.isscalar(signal)):
             sig = signal
         elif (len(signal) == n_sim):
             sig = signal[i]
@@ -197,3 +197,31 @@ def make_signal(G, n_channel,make_exact=False, chol_channel=None,rng = None):
     chol_G = V * lam.reshape((1, V.shape[1]))
     true_U = (chol_G @ true_U)
     return true_U
+
+def spatial_covariance_matrix(n_vox, kernel_width):
+    """
+    Generates a spatial covariance matrix for n_vox based on a 3d-cube and and a exponential kernel
+
+    Args:
+        n_vox (int):    Number of voxels, or 3-tulple specifying the 3dimensions
+        kernel_width (float):   Kernel width (in voxels)
+
+    Returns:
+        cov_mat (np.array): n_vox x n_vox spatial covariance matrix
+        coords (np.array): n_vox x 3 matrix with voxel coordinates
+    """
+    if isinstance(n_vox, int):
+        n_side = int(np.ceil(n_vox ** (1 / 3)))
+        vox_dim = (n_side, n_side, n_side)
+    elif isinstance(n_vox, (list, tuple)) and len(n_vox) == 3:
+        vox_dim = n_vox
+        n_vox = vox_dim[0] * vox_dim[1] * vox_dim[2]
+    else:
+        raise(NameError("n_vox needs to be either integer or 3-tuple"))
+    xv, yv, zv = np.meshgrid(range(vox_dim[0]), range(vox_dim[1]), range(vox_dim[2]), indexing='ij')
+    coords = np.vstack([xv.ravel(), yv.ravel(), zv.ravel()]).T
+    coords = coords[:n_vox]
+    sqdist = (coords[:,0:1]-coords[:,0:1].T)**2 + (coords[:,1:2]-coords[:,1:2].T)**2 +(coords[:,2:3]-coords[:,2:3].T)**2
+    cov_mat = np.exp(-sqdist / kernel_width**2)
+    return cov_mat, coords
+

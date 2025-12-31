@@ -5,7 +5,7 @@ import pandas as pd
 import scipy.optimize as opt
 
 
-def _CKA_individ(theta, M, G_est): # return deriv 1 for 
+def _CKA_individ(theta, M, G_est): # return deriv 1 for
     '''
     Compute CKA (cosine similarity) between two matrices
 
@@ -38,7 +38,7 @@ def _CKA_individ(theta, M, G_est): # return deriv 1 for
     # perform CKA:
     epsilon = 1e-10
     cka = (a.T @ b) / (np.linalg.norm(a) * np.linalg.norm(b) + epsilon)
-    
+
     # ==============================================================
     # ===== compute the first derivative of CKA in respect to theta:
     # ==============================================================
@@ -62,9 +62,9 @@ def _CKA_individ(theta, M, G_est): # return deriv 1 for
 def fit_CKA_individ(Data, M, fixed_effect='block', theta0=None, verbose = True):
     '''
     DESCRIPTION...
-    
+
     Parameters:
-    
+
     Returns:
 
 
@@ -112,7 +112,7 @@ def fit_CKA_individ(Data, M, fixed_effect='block', theta0=None, verbose = True):
                                     Data[s].obs_descriptors['cond_vec'],
                                     Data[s].obs_descriptors['part_vec'],
                                     X=pcm.matrix.indicator(Data[s].obs_descriptors['part_vec']))
-        
+
         # loop over models:
         for i,m in enumerate(M):
             if verbose:
@@ -133,7 +133,7 @@ def fit_CKA_individ(Data, M, fixed_effect='block', theta0=None, verbose = True):
                             method="L-BFGS-B",
                             options={'maxiter': 1000,'gtol': 1e-3,'ftol': 1e-3,})
             theta_hat = res.x
-            
+
             # Record results
             T.loc[s,('CKA',m_names[i])] = -res.fun
             T.loc[s,('iterations',m_names[i])] = res.nit
@@ -221,18 +221,18 @@ def fit_CKA_group_crossval(Data, M, theta0=None, fixed_effect='block', verbose=T
                             method="L-BFGS-B",
                             options={'maxiter': 1000,'gtol': 1e-3,'ftol': 1e-3})
             theta_hat = res.x
-            
+
             # get CKA on left-out subject:
             cka_ind,_ = _CKA_individ(theta_hat, m, G_ind) # remember the function returns -CKA
             T.loc[s, ('CKA_fit',m_names[i])] = -res.fun
-            T.loc[s, ('CKA',m_names[i])] = -cka_ind 
+            T.loc[s, ('CKA',m_names[i])] = -cka_ind
             T.loc[s, ('iterations',m_names[i])] = res.nit
 
             # Record theta parameters
             if theta[i] is None:
                 theta[i] = np.zeros((theta_hat.shape[0],n_subj))
             theta[i][:,s] = theta_hat
-    
+
     if not ceil:
         return T, theta
 

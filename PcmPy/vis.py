@@ -159,7 +159,7 @@ def plot_component(data,type='posterior'):
     ax.set_xlabel('Component')
 
 
-def plot_Gs(G,grid = None, labels=None,titles=None):
+def plot_Gs(G,grid = None, labels=None,titles=None, clim=None,cmap='bwr'):
     numG,n_cond,n_cond = G.shape
     if grid is None:
         a = int(np.ceil(np.sqrt(numG)))
@@ -167,7 +167,10 @@ def plot_Gs(G,grid = None, labels=None,titles=None):
         grid = (a,b)
     for i in range(numG):
         plt.subplot(grid[0],grid[1],i+1)
-        plt.imshow(G[i])
+        if clim is not None:
+            plt.imshow(G[i],vmin=clim[0],vmax=clim[1],cmap=cmap)
+        else:
+            plt.imshow(G[i],cmap)
         plt.xticks([])
         plt.yticks([])
         if titles is not None:

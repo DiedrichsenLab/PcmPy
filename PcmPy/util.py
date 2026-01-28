@@ -113,14 +113,21 @@ def G_to_dist(G):
 
     Args:
         G (ndarray): 2d or 3d array of second moment matrices
+    Returns:
+        D (ndarray): Corresponding squared Euclidean distance matrix
     """
-    K = G.shape[1]
+    K = G.shape[-1]
     C=pairwise_contrast(np.arange(K))
     if G.ndim == 2:
         d = np.diag(C @ G @ C.T)
         D = squareform(d)
+    elif G.ndim ==3:
+        D = np.zeros_like(G)
+        for i in range(G.shape[0]):
+            d = np.diag(C @ G[i,:,:] @ C.T)
+            D[i,:,:] = squareform(d)
     else:
-        raise(NameError('3d not implemented yet'))
+        raise ValueError('G has to be either 2d or 3d array')
     return D
 
 def classical_mds(G,contrast=None,align=None,thres=0):
@@ -150,15 +157,15 @@ def classical_mds(G,contrast=None,align=None,thres=0):
     W = V * np.sqrt(Glam)
 
     # If contrast is given, find the projection that maximizes the variance
-    # if contrast is not None: 
-    #     H = contrast*pinv(contrast);  # Projection matrix 
-    #     [V,L]=eigh(conj(Y)H'*H*Y); 
+    # if contrast is not None:
+    #     H = contrast*pinv(contrast);  # Projection matrix
+    #     [V,L]=eigh(conj(Y)H'*H*Y);
     # [l,i]   = sort(real(diag(L)),1,'descend');           % Sort the eigenvalues
-    # V       = V(:,i); 
-    # Y       = Y*V; 
-    # else 
-    # end; 
-    
+    # V       = V(:,i);
+    # Y       = Y*V;
+    # else
+    # end;
+
     # When aligning - use the center and scale of the target
     # As the standard for both
     if align is not None:

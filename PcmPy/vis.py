@@ -159,7 +159,34 @@ def plot_component(data,type='posterior'):
     ax.set_xlabel('Component')
 
 
+def plot_G(G, labels=None,titles=None, clim=None,cmap='bwr'):
+    """Plot single  second moment of distances matrices
+    Args:
+        G (ndarray): G-matrix to plot
+        labels (list): condition labels.
+        clim (tuple): [vmin,vmax). Color min max. Defaults to None.
+        cmap (str or colormap): colormap. Defaults to 'bwr'.
+    """
+    n_cond,n_cond = G.shape
+    if clim is not None:
+        plt.imshow(G,vmin=clim[0],vmax=clim[1],cmap=cmap)
+    else:
+        plt.imshow(G,cmap)
+    plt.xticks([])
+    plt.yticks([])
+
+
 def plot_Gs(G,grid = None, labels=None,titles=None, clim=None,cmap='bwr'):
+    """Plot multiple second moment of distances matrices on a grid
+
+    Args:
+        G (ndarray): N x K x XStack of G-matrices to plot
+        grid (tuple): Grid size (rows,cols). If None, it is chosen automatically
+        labels (list): condition labels.
+        titles (list): titles for each of the N components.
+        clim (tuple): [vmin,vmax). Color min max. Defaults to None.
+        cmap (str or colormap): colormap. Defaults to 'bwr'.
+    """
     numG,n_cond,n_cond = G.shape
     if grid is None:
         a = int(np.ceil(np.sqrt(numG)))

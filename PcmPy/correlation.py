@@ -16,7 +16,8 @@ def cond_to_item(cond_vec):
     cond_vec  = [1,2,3,4,5,6]
     con_vec =   [0,0,0,1,1,1]
     item_vec =  [0,1,2,0,1,2]
-    Args:
+
+    Parameters:
         cond_vec (ndarray): original condition vector
     Returns:
         con_vec (ndarray): Condition [0,1] vector
@@ -34,12 +35,13 @@ def multi_to_uni_item(Y,cond_vec,part_vec,
                         rem_mpat=False):
     """ Takes correlation patterns with multi-item
      then for correlation analysis by stretching them out
-    Args:
-        Y (ndarray): _description_
-        cond_vec (ndarray): original condition vector (either 1 or 0 based)
+
+    paramters:
+        Y (ndarray): NxP data matrix (N observations, P voxels)
+        cond_vec (ndarray): N-vector condition vector
         part_vec (ndarray): original partition vector
         rem_mval (bool): Remove the mean value (across voxel). False.
-        rem_mpat (bool): Remove the mean pattern (across condition).
+        rem_mpat (bool): Remove the mean pattern for each condition. False.
     Returns:
         X (ndarray): 2(conditions) x n_part x n_item*n_vox tensor
     """
@@ -49,7 +51,7 @@ def multi_to_uni_item(Y,cond_vec,part_vec,
     n_cond = len(cond)
 
     con_vec,item_vec = cond_to_item(cond_vec)
-    # Remove mean val
+    # Remove mean val across voxels (not recommented)
     if rem_mval:
         Y = Y - Y.mean(axis=1).reshape(-1,1)
 
@@ -65,12 +67,15 @@ def multi_to_uni_item(Y,cond_vec,part_vec,
     return X
 
 def combine_epsilon(var,var_cr,n_part):
-    """Combines the epsilon estimates for noise and recomputes signal co-variance
+    """Combines the epsilon estimates across two conditions for noise and recomputes signal variances
 
-    Args:
-        var (_type_): _description_
-        var_cr (_type_): _description_
-        n_part (_type_): _description_
+    Parameters:
+        var (_type_): Variances from sufficient stats
+        var_cr (_type_): Cross-variances from sufficient stats
+        n_part (_type_): Number of partitions
+    Returns:
+        sig_s: Signal variance estimate
+        sig_e: Noise variance estimate
     """
     N = np.expand_dims(n_part,1)
     sig_e= (var-var_cr)*N # Estimate of noise covariance
@@ -80,6 +85,7 @@ def combine_epsilon(var,var_cr,n_part):
 
 def calc_sufficient_stats(Y,rem_mpat=False,rem_mval=False):
     """returns Sufficient statistics for correlation analysis
+
     Args:
         Y (list): List of PCM datasets
         rem_mpat (bool): Remove mean pattern in condition (False)
@@ -118,7 +124,8 @@ def calc_sufficient_stats(Y,rem_mpat=False,rem_mval=False):
     return var,var_cr,cov,cov_cr,n_part
 
 def get_corr_raw(var,cov):
-    """ Gives the uncorrected correlation estimate from sufficent stats
+    """ Calculates the uncorrected correlation estimate from sufficient stats
+
     Args:
         var: Variance of X and Y mean pattern
         cov: Covariance between X and Y mean pattern
@@ -142,14 +149,15 @@ def calc_corr_raw(Y,rem_mpat=False,rem_mval=False):
     r_unc = get_corr_raw(var,cov)
     return r_unc
 
-def get_corr_adj(var,var_cr,cov,n_part,single_eps=True,negvar=0):
-    """ Calculates the adjusted correlation estimate from sufficent stats
+def get_corr_cbe(var,var_cr,cov,n_part,single_eps=True,negvar=0):
+    """ Calculates the cross-block correlation estimate from sufficient stats
     uses the combined epsilon estimate if single_eps is True.
+
     Args:
         var: Variance of X and Y mean pattern
         var_cr: Variance estimate for X and Y estimated from cross-block
         cov: Covariance between X and Y mean pattern
-        negvar: What to do when variance estimates are negative: np.nan: exclude, 0: take sign
+        negvar: What to do when variance estimates are negative? np.nan: exclude, 0: sign of covariance
     Returns:
         r_adj: cov/sqrt(var(x) * var(y))
         sig_s: Signal variance estimate
@@ -165,12 +173,15 @@ def get_corr_adj(var,var_cr,cov,n_part,single_eps=True,negvar=0):
     r_adj = np.clip(r_adj,-1,1)
     return r_adj,sig_s,sig_e
 
-def get_corr_adj_group(var,var_cr,cov,n_part,negvar=0):
-    """ Calculates the adjusted group correlation estimate individual sufficent stats
-    Args:
+def get_corr_cbe_group(var,var_cr,cov,n_part,negvar=0):
+    """ Calculates the cross-block group correlation estimate individual sufficient stats
+
+    Parameters:
         var: Variance of X and Y mean pattern
         var_cr: Variance estimate for X and Y estimated from cross-block
         cov: Covariance between X and Y mean pattern
+        n_part: Number of partitions
+        negvar: What to do when variance estimates are negative? np.nan: exclude, 0: sign of covariance
     Returns:
         r_adj: cov/sqrt(var(x) * var(y))
         sig_s: Signal variance estimate
@@ -184,7 +195,7 @@ def get_corr_adj_group(var,var_cr,cov,n_part,negvar=0):
     r_adj = np.clip(r_adj,-1,1)
     return r_adj,msig_s,sig_e.mean(axis=0,keepdims=True)
 
-def calc_corr_adj(Y,rem_mpat=False,rem_mval=False,single_eps=True,negvar=0):
+def calc_corr_cbe(Y,rem_mpat=False,rem_mval=False,single_eps=True,negvar=0):
     """ Calculates corrected correlation coefficient
 
     Args:
@@ -193,14 +204,13 @@ def calc_corr_adj(Y,rem_mpat=False,rem_mval=False,single_eps=True,negvar=0):
         rem_mval (bool): Remove mean value (corr or cosang). Defaults to False.
         single_eps (bool): Use single epsilon estimate all conditions. Defaults to True.
         negvar (float): Value to replace negative variance estimates. Defaults to 0.
-        reestimate_at_bound (bool): Reestimate the variance at the correlation bound. Defaults to True.
     Returns:
         r_adj: Adjusted correlation coefficient (r/sqrt(rel1*rel2))
         sig_s: Signal variance estimate
         sig_e: Noise variance estimate
     """
     var,var_cr,cov,cov_cr,n_part = calc_sufficient_stats(Y,rem_mpat,rem_mval)
-    r_adj,sig_s,sig_e = get_corr_adj(var,var_cr,cov,n_part,single_eps,negvar)
+    r_adj,sig_s,sig_e = get_corr_cbe(var,var_cr,cov,n_part,single_eps,negvar)
     return r_adj,sig_s,sig_e
 
 

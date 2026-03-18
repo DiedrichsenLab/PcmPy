@@ -12,3 +12,5 @@ API reference
    reference_matrix.rst
    reference_util.rst
    reference_sim.rst
+   reference_bootstrap.rst
+   reference_corr.rst

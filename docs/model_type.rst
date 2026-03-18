@@ -82,9 +82,9 @@ To estimate the maximum-likelihood estimate of the correlation, we need to estim
 .. math::
     \sigma^2_x = exp(\theta_x)\\
     \sigma^2_y = exp(\theta_y)\\
-    \r = (exp(2*\theta_z)-1)/(exp(2*\theta_z)+1) 
+    \r = (exp(2*\theta_z)-1)/(exp(2*\theta_z)+1)
 
-THe overall second moment matrix is then given by: 
+THe overall second moment matrix is then given by:
 
 .. math::
     \mathbf{G}= \begin{bmatrix}
@@ -92,7 +92,7 @@ THe overall second moment matrix is then given by:
     r \sigma_x \sigma_y & \sigma^2_y
     \end{bmatrix}\\
 
-If you have more than one item in each condition, the model will assume that the items within condition have independent activity patterns. If this is not the case, then you can also provide a item x item matrix as the argument  `within_cov` as . For multiple items we usually want to ignore any overall differences between the conditions, so `cond_effect` needs to be set to be `True`. 
+If you have more than one item in each condition, the model will assume that the items within condition have independent activity patterns. If this is not the case, then you can also provide a item x item matrix as the argument  `within_cov` as . For multiple items we usually want to ignore any overall differences between the conditions, so `cond_effect` needs to be set to be `True`.
 
 The derivatives are automatically calculated in the predict function. Specfically, the derivative of the correlation parameters is easy to obtain:
 
@@ -150,7 +150,7 @@ To define a custom model, the user needs to define a new Model class, inherited 
         dG_dTheta = # Calculate derivative second momement matrix
         return (G,dG_dTheta)
 
-    #  Intiialization function
+    #  Intialization function
     def set_theta0(self,G_hat):
         """
         Sets theta0 based on the crossvalidated second-moment

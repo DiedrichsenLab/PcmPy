@@ -13,8 +13,10 @@ from .model import *
 from .optimize import *
 from .inference import *
 from .inference_cka import *
-from .regression import *
 from .vis import *
+from .bootstrap import *
+from .regression import *
+from .correlation import *
 
 __all__ = ['sim', 'matrix', 'inference','inference_cka', 'optimize',
            'model', 'util', 'vis', 'regression']

@@ -14,6 +14,7 @@ import matplotlib.colors as colors
 
 import seaborn as sb
 import pandas as pd
+from matplotlib.patches import Polygon
 
 
 
@@ -202,3 +203,21 @@ def plot_Gs(G,grid = None, labels=None,titles=None, clim=None,cmap='bwr'):
         plt.yticks([])
         if titles is not None:
             plt.title(titles[i])
+
+def plot_CI(ax,x_coord,center,low,high,width=0.2,facecolor='black',alpha=0.3):
+    """ Adds a confidence interval as a transparent rectangle to the current axis
+    Args:
+        ax (matplotlib.Axis.axis): Axis to add the confidence interval to
+        xcoords (list): x-coordinates of the center of the confidence interval
+        """
+    left = x_coord - width/2
+    right = x_coord + width/2
+    lcoords = [[left,right],
+                [center,center]]
+    pcoords = [[left,low],
+                [right,low],
+                [right,high],
+                [left,high]]
+    poly = Polygon(pcoords,closed=True,fill=True,facecolor=facecolor,edgecolor=None,alpha=alpha)
+    ax.add_patch(poly)
+    ax.plot(lcoords[0],lcoords[1],color=facecolor,linewidth=2)

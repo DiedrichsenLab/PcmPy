@@ -213,11 +213,15 @@ class CorrelationModel(Model):
 
         Parameters:
             name (string):
-                name of the particular model for indentification
+                name of the particular model for identification
             within_cov (numpy.ndarray or None):
-                how to model within condition cov-variance between items
+                how to model within condition cov-variance between items (default None = identity )
             num_items (int):
                 Number of items within each condition
+            corr (float or None):
+                If None, the correlation is a free parameter to be estimated, otherwise it is fixed to the given value
+            cond_effect (bool):
+                If True, the model includes a condition effect as a random effect. Default False.
         """
         Model.__init__(self,name)
         self.num_items = num_items
@@ -234,9 +238,9 @@ class CorrelationModel(Model):
             self.within_cov = within_cov
 
         # Initialize the Gc structure
-        self.n_cparam = self.num_cond * self.cond_effect # Number of condition effect parameters
-        self.n_wparam = self.within_cov.shape[0] # Number of within condition parameters
-        self.n_param = self.num_cond * self.n_wparam + self.n_cparam
+        self.n_cparam = self.num_cond * self.cond_effect # Number of condition effect parameters (first)
+        self.n_wparam = self.within_cov.shape[0] # Number of within condition parameters (second)
+        self.n_param = self.n_cparam + self.num_cond * self.n_wparam
         self.Gc = np.zeros((self.n_param,K,K))
 
         # Now add the condition effect and within condition covariance structure
@@ -349,19 +353,50 @@ class CorrelationModel(Model):
 
         Parameters:
             theta (numpy.ndarray):
-                n_param vector or n_param x n_subj matrix of model parameters
+                n_param x n_subj matrix of model parameters
 
         Returns:
             correlations (numpy.ndarray)
                 Correlation value
         """
-        N , n_param = theta.shape
+        n_param,n_subj = theta.shape
         if self.corr is None:
             z = theta[self.n_param-1]
             r = (exp(2*z)-1)/(exp(2*z)+1)
+            fSNR = self.get_fSNR(theta, separate=False)
+            r[fSNR<0.0001] = np.sign(r[fSNR<0.0001]) # Set low fSNR estimates to the sign of the correlation.
         else:
             r = self.corr # Fixed correlations
         return r
+
+    def get_fSNR(self,theta,n_part=1,separate=False):
+        """
+        Returns the fSNR from a set of fitted parameters
+
+        Parameters:
+            theta (numpy.ndarray):
+                n_param x n_subj matrix of model parameters
+            n_part (int):
+                Number of partitions (blocks) in the data. Default 1.
+            separate (bool):
+                If True, returns fSNR for the two conditions separately, otherwise returns the geometric mean of the fSNR values
+        Returns:
+            fSNR (numpy.ndarray):
+                fSNR value
+        """
+        n_param,n_subj = theta.shape
+        if self.n_wparam>1:
+            raise(NameError("fSNR calculation only implemented for models with a single within-condition variance parameter"))
+
+        sigma2_1 = np.exp(theta[self.n_cparam + 0]) # reversing the log-transform
+        sigma2_2 = np.exp(theta[self.n_cparam + 1]) # reversing the log-transform
+        sigma2_e = np.exp(theta[-1,:]) # reversing the log-transform
+        if separate:
+            fSNR = np.c_[sigma2_1*n_part/sigma2_e, sigma2_2*n_part/sigma2_e]
+        else:
+            fSNR = np.sqrt(sigma2_1*sigma2_2)*n_part/sigma2_e
+        return fSNR
+
 
 class FixedModel(Model):
     """

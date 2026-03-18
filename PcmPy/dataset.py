@@ -4,6 +4,8 @@
 Definition of PCM Dataset class and subclasses
 @author: baihan, jdiedrichsen
 """
+import numpy as np
+import copy
 
 class Dataset:
     """Class for holding a single data set with observation descriptors.
@@ -33,3 +35,18 @@ class Dataset:
         self.descriptors = descriptors
         self.obs_descriptors =obs_descriptors
         self.channel_descriptors = channel_descriptors
+
+def combine_datasets(D,indx=None):
+    """ Combines datasets for a given index
+    Args:
+        D (list): List of PCM datasets
+        indx (ndarray): Index of datasets to combine (default 1..N)
+    Returns:
+        Dc: Combined dataset
+    """
+    if indx is None:
+        indx = np.arange(len(D))
+    Dc = copy.deepcopy(D[indx[0]])
+    for i in indx[1:]:
+        Dc.measurements=np.append(Dc.measurements,D[i].measurements,axis=1)
+    return Dc

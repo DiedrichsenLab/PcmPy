@@ -1,5 +1,6 @@
 numpy
 sphinx>=1.4
+sphinx-rtd-theme
 sphinxcontrib-bibtex
 sphinx-copybutton
 pandas

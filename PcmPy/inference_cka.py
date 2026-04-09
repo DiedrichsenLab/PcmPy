@@ -51,6 +51,11 @@ def _CKA_individ(theta, M, G_est): # return deriv 1 for
         dGdtheta_i = dGdtheta[i].flatten()
         dCKAdtheta[i] = np.dot(dCKAdb, dGdtheta_i)
 
+        # center the derivative:
+        # H = np.eye(N) - np.ones((N, N)) / N  # ensure H is in scope
+        # dGdtheta_centered_i = (H @ dGdtheta[i] @ H).flatten()
+        # dCKAdtheta[i] = np.dot(dCKAdb, dGdtheta_centered_i)
+    
     return -cka, -dCKAdtheta
 
     # ==============================================================
@@ -131,7 +136,7 @@ def fit_CKA_individ(Data, M, fixed_effect='block', theta0=None, verbose = True):
                             args=(m, G_est),
                             jac=True,          # tells SciPy that function returns (CKA, dCKAdtheta)
                             method="L-BFGS-B",
-                            options={'maxiter': 1000,'gtol': 1e-3,'ftol': 1e-3,})
+                            options={'maxiter': 2000,'gtol': 1e-10,'ftol': 1e-10})
             theta_hat = res.x
 
             # Record results
@@ -178,7 +183,6 @@ def fit_CKA_group_crossval(Data, M, theta0=None, fixed_effect='block', verbose=T
             m.common_param = np.ones((m.n_param,), dtype=np.bool_)
 
     # Preallocate output structures
-    # Preallocate output structures
     iterab = [['CKA','CKA_fit','iterations'],m_names]
     index = pd.MultiIndex.from_product(iterab, names=['variable', 'model'])
     T = pd.DataFrame(np.zeros((n_subj, n_model * 3)), columns=index)
@@ -221,7 +225,7 @@ def fit_CKA_group_crossval(Data, M, theta0=None, fixed_effect='block', verbose=T
                             args=(m, G_loo),
                             jac=True,          # tells SciPy that function returns (CKA, dCKAdtheta)
                             method="L-BFGS-B",
-                            options={'maxiter': 1000,'gtol': 1e-3,'ftol': 1e-3})
+                            options={'maxiter': 2000, 'gtol': 1e-10, 'ftol': 1e-10})
             theta_hat = res.x
 
             # get CKA on left-out subject:
@@ -323,7 +327,7 @@ def fit_CKA_group(Data, M, theta0=None, verbose=True, X=None):
                         args=(m, G_mean),
                         jac=True,          # tells SciPy that function returns (CKA, dCKAdtheta)
                         method="L-BFGS-B",
-                        options={'maxiter': 1000,'gtol': 1e-3,'ftol': 1e-3})
+                        options={'maxiter': 2000,'gtol': 1e-10,'ftol': 1e-10})
         theta_hat = res.x
 
         # get CKA on mean of G_est:

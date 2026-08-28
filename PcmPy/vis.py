@@ -55,6 +55,8 @@ def model_plot(likelihood,null_model=0,noise_ceiling=None,upper_ceiling=None, wi
         ax = sb.barplot(x=LL.model[indx], y=LL.value[indx], width=width, palette=palette, errorbar=errorbar, err_kws=err_kws)
     elif plottype=='box':
         ax = sb.boxplot(x=LL.model[indx], y=LL.value[indx], width=width, linewidth=linewidth, palette=palette, showfliers=False)
+    elif plottype=='point':
+        ax = sb.pointplot(x=LL.model[indx], y=LL.value[indx], palette=palette, errorbar=errorbar, ls='none', lw=2)
     xlim = ax.get_xlim()
     if noise_ceiling is not None:
         noise_lower = np.nanmean(likelihood[noise_ceiling])

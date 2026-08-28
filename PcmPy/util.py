@@ -166,7 +166,7 @@ def est_G(Y, Z, part_vec, X=None):
     if X is not None:
         Yr -= X @ pinv(X) @ Yr
 
-    # Estimate condition means within each run and crossvalidate
+    # Estimate condition means within each run
     for i in range(n_part):
         indxA = part_vec == part[i]
         Za = Z[indxA, :]
@@ -201,10 +201,12 @@ def make_pd(G,thresh = 1e-10):
 
     """
 
-    G = (G + G.T) / 2 # Symmetrize
+    # G = (G + G.T) / 2 # Symmetrize
+    G = 0.5 * (G + np.swapaxes(G, -1, -2)) # For G.shape == 3
     Glam, V = eigh(G)
     Glam[Glam < thresh] = thresh # rectify small eigenvalues
-    G_pd = V @ np.diag(Glam) @ V.T
+    # G_pd = V @ np.diag(Glam) @ V.T
+    G_pd = (V * Glam[..., None, :]) @ np.swapaxes(V, -1, -2) # For G.shape == 3
     return G_pd
 
 def G_to_dist(G):
@@ -237,18 +239,17 @@ def G_to_cosine(G):
         cosine_sim (ndarray): K x K cosine similarity matrix.
     """
 
+    if G.ndim < 2 or G.shape[-1] != G.shape[-2]:
+        raise ValueError("G must be square in its last two dims.")
     if np.isnan(G).any() or np.isinf(G).any():
         raise ValueError("G contains NaN or inf values")
 
-    # check if positive semi-definite
-    eigvals = np.linalg.eigvalsh(G)
-    if ~np.all(eigvals >= -1e-10):
-        G = make_pd(G)
-
-    G = 0.5 * (G + G.T)  # Ensure symmetry
-    diag = np.diag(G)
-    norm = np.sqrt(np.outer(diag, diag))
+    G = 0.5 * (G + np.swapaxes(G, -1, -2))  # Ensure symmetry
+    diag = np.diagonal(G, axis1=-2, axis2=-1)  # (..., K)
+    norm = np.sqrt(np.clip(diag[..., :, None] * diag[..., None, :], 0.0, None))
     cosine = G / norm
+    cosine = np.clip(cosine, -1.0, 1.0)
+    
     return cosine
 
 

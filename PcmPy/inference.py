@@ -680,9 +680,6 @@ def fit_model_group_crossval(Data, M, fixed_effect='block', fit_scale=False,
         theta (list of np.arrays):
             List of estimated model parameters - common group parameters come from the training data, individual parameters from the testing data
 
-        G_pred (list of np.arrays):
-            List of estimated G-matrices under the model
-
     """
 
     # Get the number of subjects
@@ -914,8 +911,6 @@ def sample_model_group(Data, M,
             Sampled parameters
         l (np.array):
             Log-likelihood corresponding to the sampled parameters
-        G_pred (list of np.arrays):
-            List of estimated G-matrices under the model
     """
     # Get the number of subjects
     if type(Data) is list:
